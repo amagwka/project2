@@ -2,7 +2,7 @@ import socket
 import time
 from pynput.keyboard import Controller, Key
 from servers.reward_server import ExternalRewardTracker
-from .constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
+from servers.constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
 
 # Keyboard setup
 ACTION_KEYS = [Key.up, Key.down, Key.left, Key.right, 'z', 'x', None]

@@ -1,10 +1,10 @@
 from envs.socket_env import SocketAppEnv
 
 def main():
-    env = SocketAppEnv(max_steps=10, device="cpu", start_servers=True, combined_server=True)
+    env = SocketAppEnv(max_steps=1000, device="cpu", start_servers=True, combined_server=True)
     obs, _ = env.reset()
     print(f"Initial obs shape: {obs.shape}")
-    for step in range(10):
+    for step in range(1000):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         print(
