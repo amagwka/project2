@@ -2,7 +2,10 @@ import gymnasium as gym
 import numpy as np
 import socket
 import torch
+import subprocess
+import sys
 from time import sleep
+from threading import Thread, Event
 
 from utils.observations import LocalObs
 from utils.intrinsic import E3BIntrinsicReward
@@ -18,7 +21,9 @@ class SocketAppEnv(gym.Env):
                  action_host="127.0.0.1", action_port=5005,
                  reward_host="127.0.0.1", reward_port=5006,
                  embedding_model="facebook/dinov2-with-registers-small",
-                 combined_server=False):
+                 combined_server=False,
+                 start_servers=False,
+                 enable_logging=False):
 
         super().__init__()
         self.max_steps = max_steps
@@ -37,6 +42,10 @@ class SocketAppEnv(gym.Env):
 
         self.action_addr = (action_host, action_port)
         self.reward_addr = (reward_host, reward_port)
+        self.start_servers = start_servers
+        self.enable_logging = enable_logging
+        self._server_processes = []
+        self._logger = None
 
         self.action_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if combined_server:
@@ -46,8 +55,15 @@ class SocketAppEnv(gym.Env):
             self.reward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.reward_socket.settimeout(0.2)
 
-        self.obs_encoder = LocalObs(source=1, mode="dino", model_name=embedding_model, device=device)
+        self.obs_encoder = LocalObs(source=1, mode="dino", model_name=embedding_model, device=device, embedding_dim=state_dim)
         self.intrinsic = E3BIntrinsicReward(latent_dim=state_dim, decay=1.0, ridge=0.1, device=device)
+
+        if self.enable_logging:
+            from utils import logger
+            self._logger = logger
+
+        if self.start_servers:
+            self._launch_servers()
 
     def reset(self, seed=None, options=None):
         self.step_count = 0
@@ -65,6 +81,11 @@ class SocketAppEnv(gym.Env):
         extrinsic = self._get_reward()
         intrinsic = self.intrinsic.compute(obs_np)
         reward = extrinsic + intrinsic
+
+        if self._logger is not None:
+            self._logger.log_scalar("Reward/Extrinsic", extrinsic, self.step_count)
+            self._logger.log_scalar("Reward/Intrinsic", intrinsic, self.step_count)
+            self._logger.log_scalar("Reward/Total", reward, self.step_count)
 
         terminated = False
         truncated = self.step_count >= self.max_steps
@@ -103,3 +124,17 @@ class SocketAppEnv(gym.Env):
     def close(self):
         self.action_socket.close()
         self.reward_socket.close()
+        for proc in self._server_processes:
+            proc.terminate()
+            proc.wait(timeout=1)
+
+    def _launch_servers(self):
+        """Launch reward/action servers as subprocesses."""
+        if self.combined_server:
+            cmd = [sys.executable, '-m', 'servers.action_server']
+            p = subprocess.Popen(cmd)
+            self._server_processes.append(p)
+        else:
+            cmd = [sys.executable, '-m', 'servers.reward_server']
+            p = subprocess.Popen(cmd)
+            self._server_processes.append(p)
