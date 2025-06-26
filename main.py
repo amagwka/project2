@@ -52,7 +52,7 @@ def main() -> None:
     Thread(target=hotkey_listener, daemon=True).start()
 
     writer = SummaryWriter(log_dir="runs/ppo_run")
-    obs = LocalObs(source=1, mode="dino", model_name="facebook/dinov2-with-registers-small", device=DEVICE)
+    obs = LocalObs(source=1, mode="dino", model_name="facebook/dinov2-with-registers-small", device=DEVICE, embedding_dim=STATE_DIM)
     e3b = E3BIntrinsicReward(latent_dim=STATE_DIM, decay=1, ridge=0.1, device=DEVICE)
     memo = LogStencilMemory(max_len=1000, steps=SEQ_LEN, feature_dim=STATE_DIM)
 

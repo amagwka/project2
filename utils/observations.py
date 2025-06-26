@@ -5,9 +5,10 @@ import logging
 from transformers import AutoProcessor, AutoModel
 
 class LocalObs:
-    def __init__(self, source=1, mode="dino", model_name=None, device="cpu"):
+    def __init__(self, source=1, mode="dino", model_name=None, device="cpu", embedding_dim=384):
         self.device = device
         self.mode = mode
+        self.embedding_dim = embedding_dim
         self.mean = np.array([0.485, 0.456, 0.406])
         self.std = np.array([0.229, 0.224, 0.225])
         self.USE_GPU_PREPROCESS = True
@@ -17,6 +18,9 @@ class LocalObs:
         if self.mode == "dino" and model_name is not None:
             self.processor = AutoProcessor.from_pretrained(model_name)
             self.model = AutoModel.from_pretrained(model_name).to(device, dtype=torch.bfloat16).eval()
+        else:
+            self.processor = None
+            self.model = None
 
     def read_frame(self) -> np.ndarray:
         ret, frame = self.video_capture.read()
@@ -51,6 +55,10 @@ class LocalObs:
             frame = (frame - self.mean) / self.std
             tensor = torch.from_numpy(frame).permute(2, 0, 1).unsqueeze(0).to(self.device)
 
+        if self.model is None:
+            # Return a dummy embedding when the model is unavailable
+            return np.zeros(self.embedding_dim, dtype=np.float32)
+
         # 3) Inference (with AMP)
         with torch.no_grad(), torch.amp.autocast(self.device, dtype=torch.bfloat16):
             emb = (
@@ -73,7 +81,7 @@ class LocalObs:
 
 # Usage example:
 if __name__ == "__main__":
-    obs = LocalObs(source=1, mode="dino", model_name="facebook/dinov2-with-registers-small", device="cuda")
+    obs = LocalObs(source=1, mode="dino", model_name="facebook/dinov2-with-registers-small", device="cuda", embedding_dim=384)
     emb = obs.get_embedding()
     print("Embedding shape:", emb.shape)
     obs.close()
