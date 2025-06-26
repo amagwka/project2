@@ -17,7 +17,8 @@ class SocketAppEnv(gym.Env):
                  state_dim=384,
                  action_host="127.0.0.1", action_port=5005,
                  reward_host="127.0.0.1", reward_port=5006,
-                 embedding_model="facebook/dinov2-with-registers-small"):
+                 embedding_model="facebook/dinov2-with-registers-small",
+                 combined_server=False):
 
         super().__init__()
         self.max_steps = max_steps
@@ -29,11 +30,20 @@ class SocketAppEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(action_dim)
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(state_dim,), dtype=np.float32)
 
+        # When combined_server=True, both actions and reward queries go
+        # through the same UDP socket/port.  This matches the behaviour of
+        # ``start_combined_udp_server`` in ``action_module.py``.
+        self.combined_server = combined_server
+
         self.action_addr = (action_host, action_port)
         self.reward_addr = (reward_host, reward_port)
 
         self.action_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.reward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if combined_server:
+            self.reward_socket = self.action_socket
+            self.reward_addr = self.action_addr
+        else:
+            self.reward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.reward_socket.settimeout(0.2)
 
         self.obs_encoder = LocalObs(source=1, mode="dino", model_name=embedding_model, device=device)
@@ -63,6 +73,14 @@ class SocketAppEnv(gym.Env):
     def _send_action(self, action_idx):
         msg = str(action_idx).encode()
         self.action_socket.sendto(msg, self.action_addr)
+        if self.combined_server:
+            # Combined server replies to every command. Read and discard
+            # the acknowledgement to keep the socket state clean for the
+            # next reward query.
+            try:
+                self.reward_socket.recvfrom(32)
+            except Exception:
+                pass
 
     def _get_reward(self):
         try:
