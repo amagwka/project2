@@ -41,5 +41,9 @@ This repository implements a reinforcement learning setup that interacts with an
    ```bash
    python main.py
    ```
+3. Run a quick random-action demo to inspect rewards:
+   ```bash
+   python examples/random_agent.py
+   ```
 
 Dependencies include `torch`, `gymnasium`, `numpy`, `transformers`, `pymem`, `psutil`, `pynput` and `opencv-python`.
