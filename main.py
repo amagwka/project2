@@ -8,12 +8,12 @@ from threading import Thread
 from pynput import keyboard
 from torch.utils.tensorboard import SummaryWriter
 
-from components.nn import Actor, Q_Critic
-from components.rollout import RolloutBufferNoDone, compute_gae
-from components.ppo import ppo_update
-from components.obs import LocalObs
-from components.rew import E3BIntrinsicReward
-from components.shrink import LogStencilMemory
+from models.nn import Actor, Q_Critic
+from utils.rollout import RolloutBufferNoDone, compute_gae
+from models.ppo import ppo_update
+from utils.observations import LocalObs
+from utils.intrinsic import E3BIntrinsicReward
+from utils.shrink import LogStencilMemory
 
 
 def send_action_to_server(action_idx: int, host: str = "127.0.0.1", port: int = 5005) -> None:

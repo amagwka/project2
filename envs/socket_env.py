@@ -4,8 +4,8 @@ import socket
 import torch
 from time import sleep
 
-from components.obs import LocalObs
-from components.rew import E3BIntrinsicReward
+from utils.observations import LocalObs
+from utils.intrinsic import E3BIntrinsicReward
 
 class SocketAppEnv(gym.Env):
     metadata = {"render_modes": []}

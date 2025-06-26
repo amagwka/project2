@@ -1,7 +1,7 @@
 import socket
 import time
 from pynput.keyboard import Controller, Key
-from components.external_reward import ExternalRewardTracker
+from servers.reward_server import ExternalRewardTracker
 
 # Keyboard setup
 ACTION_KEYS = [Key.up, Key.down, Key.left, Key.right, 'z', 'x', Key.space]

@@ -61,7 +61,7 @@ class RolloutBufferNoDone:
 
         # 3) Build sequence indices and gather
         seq_idx    = (bases.unsqueeze(1) - self.offsets) % N  # (batch, seq_len)
-        states_seq = self.state[seq_idx]idx = torch.arange(N, device=self.device)
+        states_seq = self.state[seq_idx]
 
         return (
             states_seq,
