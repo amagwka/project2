@@ -89,7 +89,11 @@ class SocketAppEnv(gym.Env):
 
         terminated = False
         truncated = self.step_count >= self.max_steps
-        return obs_np.astype(np.float32), reward, terminated, truncated, {}
+        info = {
+            "extrinsic": float(extrinsic),
+            "intrinsic": float(intrinsic),
+        }
+        return obs_np.astype(np.float32), reward, terminated, truncated, info
 
     def _send_action(self, action_idx):
         msg = str(action_idx).encode()
