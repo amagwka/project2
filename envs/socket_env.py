@@ -4,8 +4,9 @@ import socket
 import torch
 import subprocess
 import sys
-from time import sleep
+from time import sleep, perf_counter
 from threading import Thread, Event
+from servers.constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
 
 from utils.observations import LocalObs
 from utils.intrinsic import E3BIntrinsicReward
@@ -46,6 +47,7 @@ class SocketAppEnv(gym.Env):
         self.enable_logging = enable_logging
         self._server_processes = []
         self._logger = None
+        self._last_action_time = perf_counter()
 
         self.action_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if combined_server:
@@ -74,8 +76,17 @@ class SocketAppEnv(gym.Env):
 
     def step(self, action):
         self.step_count += 1
+        now = perf_counter()
+        elapsed = now - self._last_action_time
+        delay = 0.0
+        if action in ARROW_IDX:
+            delay = ARROW_DELAY
+        elif action == WAIT_IDX:
+            delay = WAIT_DELAY
         self._send_action(action)
-        sleep(0.07)
+        if delay > 0 and elapsed < delay:
+            sleep(delay - elapsed)
+        self._last_action_time = perf_counter()
 
         obs_np = self.obs_encoder.get_embedding()
         extrinsic = self._get_reward()
