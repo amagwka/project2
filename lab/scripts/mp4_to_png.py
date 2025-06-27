@@ -11,7 +11,7 @@ def convert(video_path: Path, out_dir: Path, fps: int) -> None:
         "-i",
         str(video_path),
         "-vf",
-        f"fps={fps}",
+        f"fps={fps},scale=224:224:flags=bicubic",
         "-vsync",
         "0",
         str(out_dir / "%06d.png"),
