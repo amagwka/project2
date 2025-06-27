@@ -28,6 +28,7 @@ def load_model(device: str, variant: str):
     return model, hidden_dim
 
 
+
 def transform_image():
     return transforms.Compose([
         transforms.Resize((224, 224)),
@@ -51,6 +52,7 @@ def encode_image(img_path: Path, model, transform, device: str):
 
 
 def process_sequence(seq_dir: Path, model, transform, device: str, hidden_dim: int):
+
     images = sorted(seq_dir.glob("*.png"))
     embeddings = []
     for img in images:
@@ -58,6 +60,7 @@ def process_sequence(seq_dir: Path, model, transform, device: str, hidden_dim: i
     if embeddings:
         return torch.stack(embeddings)
     return torch.empty(0, hidden_dim)
+
 
 
 def main() -> None:
@@ -71,11 +74,13 @@ def main() -> None:
         choices=["small", "large", "aimv2"],
         help="Embedding model variant",
     )
+
     p.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     args = p.parse_args()
 
     transform = transform_image()
     model, hidden_dim = load_model(args.device, args.model)
+
 
     with h5py.File(args.output, "w") as h5f:
         for seq_dir in sorted(Path(args.image_dir).iterdir()):
