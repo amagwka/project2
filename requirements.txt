@@ -1,0 +1,12 @@
+# Basic dependencies for the project
+torch
+gymnasium
+numpy
+transformers
+pymem
+psutil
+pynput
+opencv-python
+requests
+Pillow
+pytest
