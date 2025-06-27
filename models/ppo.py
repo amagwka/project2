@@ -21,20 +21,24 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
 
             # Directly use the state sequences from the buffer
             state_seq = buf_states[sl].to(DEVICE)  # shape: [batch_size, seq_len, state_dim]
+            actions    = buf_actions[sl].to(DEVICE)
+            logp_old   = buf_logp_old[sl].to(DEVICE)
+            returns    = buf_returns[sl].to(DEVICE)
+            adv        = buf_adv[sl].to(DEVICE)
 
             # Actor forward pass
             logits = actor(state_seq)  # [batch_size, action_dim]
             dist = td.Categorical(logits=logits)
-            logp = dist.log_prob(buf_actions[sl].argmax(-1))  # [batch_size]
+            logp = dist.log_prob(actions.argmax(-1))  # [batch_size]
 
-            ratio = (logp - buf_logp_old[sl]).exp()
-            surr1 = ratio * buf_adv[sl]
-            surr2 = torch.clamp(ratio, 1-CLIP_EPS, 1+CLIP_EPS) * buf_adv[sl]
+            ratio = (logp - logp_old).exp()
+            surr1 = ratio * adv
+            surr2 = torch.clamp(ratio, 1-CLIP_EPS, 1+CLIP_EPS) * adv
             actor_loss = -torch.min(surr1, surr2).mean()
 
             # Critic forward pass
-            q_pred = critic(state_seq, buf_actions[sl])  # critic expects same seq
-            critic_loss = F.mse_loss(q_pred.squeeze(), buf_returns[sl])
+            q_pred = critic(state_seq, actions)  # critic expects same seq
+            critic_loss = F.mse_loss(q_pred.squeeze(), returns)
 
             loss = actor_loss + 0.5 * critic_loss
 
