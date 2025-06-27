@@ -63,3 +63,32 @@ class VideoDataset(Dataset):
             emb_seq.append(self._encode_frames(frame))
         emb_seq = torch.stack(emb_seq)
         return emb_seq[:-1], emb_seq[-1]
+
+class EmbeddingH5Dataset(Dataset):
+    """Dataset that yields sequences of embeddings from an H5 file."""
+
+    def __init__(self, h5_path: str, sequence_length: int = 30, frame_gap: int = 30):
+        self.h5_path = h5_path
+        self.sequence_length = sequence_length
+        self.frame_gap = frame_gap
+        import h5py
+        with h5py.File(h5_path, "r") as f:
+            self.keys = list(f.keys())
+            self.lengths = {k: f[k].shape[0] for k in self.keys}
+        self.indices = []
+        for k, length in self.lengths.items():
+            max_start = length - sequence_length - frame_gap
+            for i in range(max_start + 1):
+                self.indices.append((k, i))
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        import h5py
+        key, start = self.indices[idx]
+        with h5py.File(self.h5_path, "r") as f:
+            data = f[key][start:start + self.sequence_length]
+            target = f[key][start + self.sequence_length + self.frame_gap - 1]
+        return torch.tensor(data), torch.tensor(target)
+
