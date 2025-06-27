@@ -91,7 +91,8 @@ def main() -> None:
         writer.add_scalar("Reward/Total", total_r, step_count)
 
         value = critic(emb_seq, act_onehot).squeeze()
-        buffer.add(emb_seq[0].cpu(), act_onehot.cpu(), total_r, value.cpu(), logp.cpu())
+        state_tensor = torch.from_numpy(emb_np).float()
+        buffer.add(state_tensor, act_onehot.cpu(), total_r, value.cpu(), logp.cpu())
 
         step_count += 1
         writer.add_scalar("Reward/Total", total_r, step_count)
