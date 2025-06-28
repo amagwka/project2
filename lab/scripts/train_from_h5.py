@@ -21,6 +21,9 @@ def parse_args():
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     p.add_argument("--log-dir", type=str, default="runs/tmdn_h5", help="TensorBoard log directory")
+    p.add_argument("--no-bf16", dest="use_bf16", action="store_false", help="Disable bfloat16 mixed precision")
+    p.set_defaults(use_bf16=True)
+
     return p.parse_args()
 
 
@@ -40,7 +43,8 @@ def main() -> None:
         for seq, target in pbar:
             seq = seq.to(args.device)
             target = target.to(args.device)
-            loss, _ = train_step(model, seq, target)
+            with torch.amp.autocast(args.device, dtype=torch.bfloat16, enabled=args.use_bf16):
+                loss, _ = train_step(model, seq, target)
             optim.zero_grad()
             loss.backward()
             optim.step()
