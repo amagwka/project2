@@ -34,7 +34,10 @@ class GeometricAttention(nn.Module):
         # Poincar\xe9 ball distance
         num = 2 * torch.norm(x - y, dim=-1, keepdim=True) ** 2
         denom = (1 - c * x_norm) * (1 - c * y_norm)
-        return torch.acosh(1 + c * num / denom) / torch.sqrt(c)
+        denom = torch.clamp(denom, min=1e-5)
+        arg = 1 + c * num / denom
+        arg = torch.clamp(arg, min=1.00001)
+        return torch.acosh(arg) / torch.sqrt(c)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, D = x.shape

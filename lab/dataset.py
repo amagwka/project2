@@ -90,5 +90,5 @@ class EmbeddingH5Dataset(Dataset):
         with h5py.File(self.h5_path, "r") as f:
             data = f[key][start:start + self.sequence_length]
             target = f[key][start + self.sequence_length + self.frame_gap - 1]
-        return torch.tensor(data), torch.tensor(target)
+        return torch.tensor(data, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
 
