@@ -175,7 +175,7 @@ class TemporalManifoldDiffusionNetwork(nn.Module):
         ])
         self.noise_scheduler = nn.Parameter(torch.linspace(0.1, 0.9, diffusion_steps))
         self.denoise_net = nn.Sequential(
-            nn.Linear(hidden_dim + 1, hidden_dim),
+            nn.Linear(hidden_dim * 2, hidden_dim),
             nn.SiLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.SiLU(),
