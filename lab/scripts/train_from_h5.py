@@ -2,6 +2,10 @@ import argparse
 from torch.utils.data import DataLoader
 import torch
 from pathlib import Path
+import sys
+
+# Ensure imports work when the script is executed from within this directory
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from tmdn import create_tmdn_model, train_step
 from dataset import EmbeddingH5Dataset
