@@ -100,9 +100,13 @@ class WaveletTransform(nn.Module):
         decompositions: List[torch.Tensor] = []
         for i, wavelet in enumerate(self.wavelets):
             wavelet_filter = F.softmax(wavelet, dim=-1)
-            padding = len(wavelet_filter) - 1
+            padding = wavelet_filter.size(-1) - 1
             x_padded = F.pad(x_freq, (padding, 0))
-            decomp = F.conv1d(x_padded.unsqueeze(1), wavelet_filter.unsqueeze(0).unsqueeze(0)).squeeze(1)
+            decomp = F.conv1d(
+                x_padded,
+                wavelet_filter.unsqueeze(1),
+                groups=self.dim,
+            )
             stride = 2 ** (i + 1)
             decomp = decomp[:, :, ::stride]
             decomp = F.interpolate(decomp, size=T, mode='linear', align_corners=False)
