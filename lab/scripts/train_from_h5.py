@@ -23,6 +23,7 @@ def parse_args():
     p.add_argument("--log-dir", type=str, default="runs/tmdn_h5", help="TensorBoard log directory")
     p.add_argument("--no-bf16", dest="use_bf16", action="store_false", help="Disable bfloat16 mixed precision")
     p.set_defaults(use_bf16=True)
+
     return p.parse_args()
 
 
