@@ -44,3 +44,19 @@ python scripts/cache_embeddings.py --image-dir frames --output data.h5 --model s
 # 3. Train model
 python scripts/train_from_h5.py --h5 data.h5 --epochs 5 --batch-size 4
 ```
+
+## Experiment 2: LSTM Baseline
+
+A second experiment explores a simpler recurrent approach for next-frame prediction. The model in `rnn_baseline.py` uses an LSTM (or GRU) over the last 30 frame embeddings. With the default dataset at one frame per second this provides a 30‑second history window.
+
+Training from cached embeddings can be done with:
+```bash
+python scripts/train_rnn.py --h5 data.h5 --model lstm --epochs 5 --batch-size 4
+```
+
+A larger GRU variant may be trained by increasing the hidden dimension:
+```bash
+python scripts/train_rnn.py --h5 data.h5 --model gru --hidden-dim 1024
+```
+
+In our tests the trained TMDN outperformed the GRU baseline in prediction accuracy even when the GRU used the bigger hidden size.
