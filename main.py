@@ -66,8 +66,9 @@ def main() -> None:
         act_onehot = act_onehot.unsqueeze(0)
         writer.add_scalar("Reward/Total", reward, step_count)
 
-        value = critic(emb_seq, act_onehot.to(DEVICE)).squeeze()
-        buffer.add(state_tensor, act_onehot.cpu(), reward, value.cpu(), logp.cpu())
+        value = critic(emb_seq, act_onehot.to(DEVICE)).squeeze().detach()
+        logp_detached = logp.detach()
+        buffer.add(state_tensor, act_onehot.cpu(), reward, value.cpu(), logp_detached.cpu())
         if terminated or truncated:
             obs, _ = env.reset()
 
