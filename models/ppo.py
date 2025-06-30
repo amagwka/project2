@@ -12,8 +12,16 @@ CLIP_EPS      = 0.2
 
 def ppo_update(actor, critic, optim_actor, optim_critic,
                buf_states, buf_actions, buf_logp_old, buf_returns, buf_adv):
+    """Perform a PPO update and return training metrics."""
     batch = len(buf_states)
     idx = torch.randperm(batch)
+
+    metrics = {
+        "actor_loss": 0.0,
+        "critic_loss": 0.0,
+        "kl_div": 0.0,
+        "num_batches": 0,
+    }
 
     for _ in range(3):  # epochs
         for start in range(0, batch, 256):
@@ -35,6 +43,7 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
             surr1 = ratio * adv
             surr2 = torch.clamp(ratio, 1-CLIP_EPS, 1+CLIP_EPS) * adv
             actor_loss = -torch.min(surr1, surr2).mean()
+            approx_kl = (logp_old - logp).mean()
 
             # Critic forward pass
             q_pred = critic(state_seq, actions)  # critic expects same seq
@@ -47,3 +56,13 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
             loss.backward()
             optim_actor.step()
             optim_critic.step()
+
+            metrics["actor_loss"] += actor_loss.item()
+            metrics["critic_loss"] += critic_loss.item()
+            metrics["kl_div"] += approx_kl.item()
+            metrics["num_batches"] += 1
+
+    n = max(1, metrics.pop("num_batches"))
+    for k in metrics:
+        metrics[k] /= n
+    return metrics
