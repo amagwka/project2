@@ -41,6 +41,7 @@ This repository implements a reinforcement learning setup that interacts with an
    the additional reward. The server loads the pretrained checkpoint at
    `lab/scripts/rnn_lstm.pt` which was trained with an LSTM of hidden size
    512 and 3 layers:
+
    ```bash
    python servers/world_model_server.py
    ```

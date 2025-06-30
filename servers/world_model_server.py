@@ -27,6 +27,7 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
                     else:
                         renamed[k] = v
                 model.load_state_dict(renamed)
+
             print(f"[WorldModelServer] Loaded model from {model_path}")
         except Exception as e:
             print(f"[WorldModelServer] Failed to load {model_path}: {e}")
