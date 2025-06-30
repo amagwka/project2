@@ -38,8 +38,10 @@ This repository implements a reinforcement learning setup that interacts with an
    python servers/action_server.py
    ```
 2. (Optional) start the world model server which provides predictions for
-   the additional reward. A pretrained model is included at
-   `lab/scripts/rnn_lstm.pt`:
+   the additional reward. The server loads the pretrained checkpoint at
+   `lab/scripts/rnn_lstm.pt` which was trained with an LSTM of hidden size
+   512 and 3 layers:
+
    ```bash
    python servers/world_model_server.py
    ```

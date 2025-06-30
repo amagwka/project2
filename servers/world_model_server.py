@@ -15,7 +15,19 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
     if model_path:
         try:
             state = torch.load(model_path, map_location=device)
-            model.load_state_dict(state)
+            try:
+                model.load_state_dict(state)
+            except RuntimeError:
+                # Older checkpoints may use ``lstm`` as the module name.
+                # Rename keys on-the-fly to match the current implementation.
+                renamed = {}
+                for k, v in state.items():
+                    if k.startswith("lstm."):
+                        renamed["rnn." + k[5:]] = v
+                    else:
+                        renamed[k] = v
+                model.load_state_dict(renamed)
+
             print(f"[WorldModelServer] Loaded model from {model_path}")
         except Exception as e:
             print(f"[WorldModelServer] Failed to load {model_path}: {e}")
