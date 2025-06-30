@@ -132,6 +132,7 @@ class SocketAppEnv(gym.Env):
         if self._logger is not None:
             self._logger.log_scalar("Reward/Extrinsic", extrinsic, self.step_count)
             self._logger.log_scalar("Reward/Intrinsic", intrinsic, self.step_count)
+            self._logger.log_scalar("Reward/ModelBonus", model_bonus, self.step_count)
             self._logger.log_scalar("Reward/Total", reward, self.step_count)
 
         terminated = False

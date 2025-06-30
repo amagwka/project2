@@ -5,7 +5,7 @@ import torch.distributions as td
 from time import sleep
 from threading import Thread
 from pynput import keyboard
-from torch.utils.tensorboard import SummaryWriter
+from utils import logger
 
 from envs.socket_env import SocketAppEnv
 from models.nn import Actor, Q_Critic
@@ -36,8 +36,8 @@ def main() -> None:
     global paused
     Thread(target=hotkey_listener, daemon=True).start()
 
-    writer = SummaryWriter(log_dir="runs/ppo_run")
-    env = SocketAppEnv(device=DEVICE, combined_server=True, start_servers=False)
+    env = SocketAppEnv(device=DEVICE, combined_server=True,
+                       start_servers=False, enable_logging=True)
     obs, _ = env.reset()
 
     actor = Actor(state_dim=STATE_DIM, action_dim=ACTION_DIM).to(DEVICE)
@@ -64,7 +64,8 @@ def main() -> None:
 
         obs, reward, terminated, truncated, _ = env.step(action.item())
         act_onehot = act_onehot.unsqueeze(0)
-        writer.add_scalar("Reward/Total", reward, step_count)
+        logger.log_scalar("Reward/Total", reward, step_count)
+        logger.log_histogram("Action/Probs", dist.probs.squeeze(0).cpu().numpy(), step_count)
 
         value = critic(emb_seq, act_onehot.to(DEVICE)).squeeze().detach()
         logp_detached = logp.detach()
@@ -73,12 +74,18 @@ def main() -> None:
             obs, _ = env.reset()
 
         step_count += 1
-        writer.add_scalar("Reward/Total", reward, step_count)
+        logger.log_scalar("Reward/Total", reward, step_count)
 
         if buffer.ready() and step_count % 256 == 0:
             s, a, r, v, lp = buffer.get()
             returns, adv = compute_gae(r, v)
-            ppo_update(actor, critic, optim_actor, optim_critic, s, a, lp, returns, adv)
+            metrics = ppo_update(actor, critic, optim_actor, optim_critic,
+                                 s, a, lp, returns, adv)
+            logger.log_dict({
+                "Loss/Actor": metrics.get("actor_loss", 0.0),
+                "Loss/Critic": metrics.get("critic_loss", 0.0),
+                "KLDiv": metrics.get("kl_div", 0.0),
+            }, step_count)
             print(f"[PPO Update] Step {step_count}")
 
 
