@@ -37,11 +37,18 @@ This repository implements a reinforcement learning setup that interacts with an
    ```bash
    python servers/action_server.py
    ```
-2. Launch the training script:
+2. (Optional) start the world model server which provides predictions for
+   the additional reward. The server loads the pretrained checkpoint at
+   `lab/scripts/rnn_lstm.pt` which was trained with an LSTM of hidden size
+   512 and 3 layers:
+   ```bash
+   python servers/world_model_server.py
+   ```
+3. Launch the training script:
    ```bash
    python main.py
    ```
-3. Run a quick random-action demo to inspect rewards:
+4. Run a quick random-action demo to inspect rewards:
    ```bash
    python examples/random_agent.py
    ```

@@ -10,6 +10,7 @@ from servers.constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
 
 from utils.observations import LocalObs
 from utils.intrinsic import E3BIntrinsicReward
+from utils.wasserstein import wasserstein_distance
 
 class SocketAppEnv(gym.Env):
     metadata = {"render_modes": []}
@@ -24,7 +25,9 @@ class SocketAppEnv(gym.Env):
                  embedding_model="facebook/dinov2-with-registers-small",
                  combined_server=False,
                  start_servers=False,
-                 enable_logging=False):
+                 enable_logging=False,
+                 use_world_model=False,
+                 world_model_host="127.0.0.1", world_model_port=5007):
 
         super().__init__()
         self.max_steps = max_steps
@@ -45,9 +48,12 @@ class SocketAppEnv(gym.Env):
         self.reward_addr = (reward_host, reward_port)
         self.start_servers = start_servers
         self.enable_logging = enable_logging
+        self.use_world_model = use_world_model
+        self.wm_addr = (world_model_host, world_model_port)
         self._server_processes = []
         self._logger = None
         self._last_action_time = perf_counter()
+        self._last_wm_time = perf_counter()
 
         self.action_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if combined_server:
@@ -56,6 +62,13 @@ class SocketAppEnv(gym.Env):
         else:
             self.reward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.reward_socket.settimeout(0.2)
+
+        if self.use_world_model:
+            self.wm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.wm_socket.settimeout(0.2)
+        else:
+            self.wm_socket = None
+        self.obs_history = []
 
         self.obs_encoder = LocalObs(source=1, mode="dino", model_name=embedding_model, device=device, embedding_dim=state_dim)
         self.intrinsic = E3BIntrinsicReward(latent_dim=state_dim, decay=1.0, ridge=0.1, device=device)
@@ -71,6 +84,8 @@ class SocketAppEnv(gym.Env):
         self.step_count = 0
         self._send_reset()
         self.intrinsic.reset()
+        self.obs_history.clear()
+        self._last_wm_time = perf_counter()
         emb_np = self.obs_encoder.get_embedding()
         return emb_np.astype(np.float32), {}
 
@@ -91,7 +106,28 @@ class SocketAppEnv(gym.Env):
         obs_np = self.obs_encoder.get_embedding()
         extrinsic = self._get_reward()
         intrinsic = self.intrinsic.compute(obs_np)
-        reward = extrinsic + intrinsic
+        model_bonus = 0.0
+        self.obs_history.append(obs_np.copy())
+        if len(self.obs_history) > 30:
+            self.obs_history.pop(0)
+        if (
+            self.use_world_model and
+            len(self.obs_history) == 30 and
+            perf_counter() - self._last_wm_time >= 1.0
+        ):
+            context = np.stack(self.obs_history, axis=0).astype(np.float32)
+            try:
+                self.wm_socket.sendto(context.tobytes(), self.wm_addr)
+                pred_bytes, _ = self.wm_socket.recvfrom(65535)
+                pred = np.frombuffer(pred_bytes, dtype=np.float32)
+                if pred.size == self.state_dim:
+                    dist = wasserstein_distance(pred, obs_np)
+                    model_bonus = -dist
+            except Exception:
+                model_bonus = 0.0
+            self._last_wm_time = perf_counter()
+
+        reward = extrinsic + intrinsic + model_bonus
 
         if self._logger is not None:
             self._logger.log_scalar("Reward/Extrinsic", extrinsic, self.step_count)
@@ -103,6 +139,7 @@ class SocketAppEnv(gym.Env):
         info = {
             "extrinsic": float(extrinsic),
             "intrinsic": float(intrinsic),
+            "model_bonus": float(model_bonus),
         }
         return obs_np.astype(np.float32), reward, terminated, truncated, info
 
@@ -139,6 +176,8 @@ class SocketAppEnv(gym.Env):
     def close(self):
         self.action_socket.close()
         self.reward_socket.close()
+        if self.wm_socket is not None:
+            self.wm_socket.close()
         for proc in self._server_processes:
             proc.terminate()
             proc.wait(timeout=1)
@@ -151,5 +190,10 @@ class SocketAppEnv(gym.Env):
             self._server_processes.append(p)
         else:
             cmd = [sys.executable, '-m', 'servers.reward_server']
+            p = subprocess.Popen(cmd)
+            self._server_processes.append(p)
+
+        if self.use_world_model:
+            cmd = [sys.executable, '-m', 'servers.world_model_server']
             p = subprocess.Popen(cmd)
             self._server_processes.append(p)
