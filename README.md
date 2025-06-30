@@ -37,11 +37,17 @@ This repository implements a reinforcement learning setup that interacts with an
    ```bash
    python servers/action_server.py
    ```
-2. Launch the training script:
+2. (Optional) start the world model server which provides predictions for
+   the additional reward. A pretrained model is included at
+   `lab/scripts/rnn_lstm.pt`:
+   ```bash
+   python servers/world_model_server.py
+   ```
+3. Launch the training script:
    ```bash
    python main.py
    ```
-3. Run a quick random-action demo to inspect rewards:
+4. Run a quick random-action demo to inspect rewards:
    ```bash
    python examples/random_agent.py
    ```
