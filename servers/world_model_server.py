@@ -34,6 +34,8 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
     model.eval()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Allow quick rebinding in case a previous instance recently exited
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
     print(f"[WorldModelServer] Listening on udp://{host}:{port}")
 
