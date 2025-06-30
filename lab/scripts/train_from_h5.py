@@ -23,16 +23,25 @@ def parse_args():
     p.add_argument("--log-dir", type=str, default="runs/tmdn_h5", help="TensorBoard log directory")
     p.add_argument("--no-bf16", dest="use_bf16", action="store_false", help="Disable bfloat16 mixed precision")
     p.set_defaults(use_bf16=True)
+    p.add_argument("--frame-gap", type=int, default=1, help="Target frames ahead to predict")
+    p.add_argument("--checkpoint", type=str, help="Optional checkpoint to resume from")
 
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    dataset = EmbeddingH5Dataset(args.h5,30,1)
+    dataset = EmbeddingH5Dataset(args.h5, 30, args.frame_gap)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
     model = create_tmdn_model().to(args.device)
+    if args.checkpoint:
+        try:
+            state = torch.load(args.checkpoint, map_location=args.device)
+            model.load_state_dict(state)
+            print(f"Loaded checkpoint {args.checkpoint}")
+        except Exception as e:
+            print(f"Failed to load {args.checkpoint}: {e}")
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     writer = SummaryWriter(log_dir=args.log_dir)
     global_step = 0

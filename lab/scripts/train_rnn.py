@@ -23,15 +23,24 @@ def parse_args():
     p.add_argument("--model", type=str, choices=["lstm", "gru"], default="lstm")
     p.add_argument("--hidden-dim", type=int, default=512)
     p.add_argument("--log-dir", type=str, default="runs/rnn_baseline")
+    p.add_argument("--frame-gap", type=int, default=1, help="Target frames ahead to predict")
+    p.add_argument("--checkpoint", type=str, help="Optional checkpoint to resume from")
     return p.parse_args()
 
 
 def main():
     args = parse_args()
-    dataset = EmbeddingH5Dataset(args.h5,30,1)
+    dataset = EmbeddingH5Dataset(args.h5, 30, args.frame_gap)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
     model = RNNPredictor(hidden_dim=args.hidden_dim, rnn_type=args.model).to(args.device)
+    if args.checkpoint:
+        try:
+            state = torch.load(args.checkpoint, map_location=args.device)
+            model.load_state_dict(state)
+            print(f"Loaded checkpoint {args.checkpoint}")
+        except Exception as e:
+            print(f"Failed to load {args.checkpoint}: {e}")
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     writer = SummaryWriter(log_dir=args.log_dir)
 
