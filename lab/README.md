@@ -30,7 +30,7 @@ Three helper scripts are provided for workflows that operate on directories of v
 
 3. `scripts/train_from_h5.py` – trains the TMDN model using the cached embeddings.
 
-The default dataset settings use a history of 30 frame embeddings and predict one frame 30 frames later (i.e. 1 second at 30 fps).
+The default dataset settings use a history of 30 frame embeddings and predict the next frame by default. Pass ``--frame-gap`` to train the models to predict further into the future.
 
 Example usage:
 ```bash
@@ -52,6 +52,8 @@ A second experiment explores a simpler recurrent approach for next-frame predict
 Training from cached embeddings can be done with:
 ```bash
 python scripts/train_rnn.py --h5 data.h5 --model lstm --epochs 5 --batch-size 4
+# predict five steps ahead
+python scripts/train_rnn.py --h5 data.h5 --frame-gap 5 --epochs 5
 ```
 
 A larger GRU variant may be trained by increasing the hidden dimension:
