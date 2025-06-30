@@ -28,7 +28,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    dataset = EmbeddingH5Dataset(args.h5)
+    dataset = EmbeddingH5Dataset(args.h5,30,1)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
     model = RNNPredictor(hidden_dim=args.hidden_dim, rnn_type=args.model).to(args.device)

@@ -29,7 +29,7 @@ def parse_args():
 
 def main() -> None:
     args = parse_args()
-    dataset = EmbeddingH5Dataset(args.h5)
+    dataset = EmbeddingH5Dataset(args.h5,30,1)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
     model = create_tmdn_model().to(args.device)

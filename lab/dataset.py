@@ -65,8 +65,6 @@ class VideoDataset(Dataset):
         return emb_seq[:-1], emb_seq[-1]
 
 class EmbeddingH5Dataset(Dataset):
-    """Dataset that yields sequences of embeddings from an H5 file."""
-
     def __init__(self, h5_path: str, sequence_length: int = 30, frame_gap: int = 30):
         self.h5_path = h5_path
         self.sequence_length = sequence_length

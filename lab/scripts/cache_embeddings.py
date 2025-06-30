@@ -16,13 +16,15 @@ def load_model(device: str, variant: str):
         raise RuntimeError("transformers is required for embedding extraction")
 
     model_map = {
-        "small": "facebook/dinov2-small",
-        "large": "facebook/dinov2-large",
+        "small": "facebook/dinov2-with-registers-small",
+        "large": "facebook/dinov2-with-registers-large",
         "aimv2": "apple/aimv2-large-patch14-224-distilled",
+        "aimv2lit": "apple/aimv2-large-patch14-224-lit",
+        "3baimv2": "apple/aimv2-3B-patch14-224",
     }
     repo = model_map.get(variant, "facebook/dinov2-small")
-    model = AutoModel.from_pretrained(repo)
-    hidden_dim = getattr(model.config, "hidden_size", 768)
+    model = AutoModel.from_pretrained(repo,trust_remote_code=True)
+    hidden_dim = getattr(model.config, "hidden_size", 384)
     model.to(device)
     model.eval()
     return model, hidden_dim
@@ -52,7 +54,6 @@ def encode_image(img_path: Path, model, transform, device: str):
 
 
 def process_sequence(seq_dir: Path, model, transform, device: str, hidden_dim: int):
-
     images = sorted(seq_dir.glob("*.png"))
     embeddings = []
     for img in images:
@@ -71,7 +72,7 @@ def main() -> None:
         "--model",
         type=str,
         default="small",
-        choices=["small", "large", "aimv2"],
+        choices=["small", "large", "aimv2","aimv2lit","3baimv2"],
         help="Embedding model variant",
     )
 
@@ -85,6 +86,7 @@ def main() -> None:
     with h5py.File(args.output, "w") as h5f:
         for seq_dir in sorted(Path(args.image_dir).iterdir()):
             if not seq_dir.is_dir():
+                print("WTF")
                 continue
             emb = process_sequence(seq_dir, model, transform, args.device, hidden_dim)
             h5f.create_dataset(seq_dir.name, data=emb.numpy())
