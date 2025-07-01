@@ -6,7 +6,7 @@ import subprocess
 import sys
 from time import sleep, perf_counter
 from threading import Thread, Event
-from servers.constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
+from servers.constants import ARROW_DELAY, WAIT_DELAY, NON_ARROW_DELAY, ARROW_IDX, WAIT_IDX
 
 from utils.observations import LocalObs
 from utils.intrinsic import E3BIntrinsicReward
@@ -98,6 +98,8 @@ class SocketAppEnv(gym.Env):
             delay = ARROW_DELAY
         elif action == WAIT_IDX:
             delay = WAIT_DELAY
+        else:
+            delay = NON_ARROW_DELAY
         self._send_action(action)
         if delay > 0 and elapsed < delay:
             sleep(delay - elapsed)

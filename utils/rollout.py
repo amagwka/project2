@@ -24,7 +24,7 @@ class RolloutBufferNoDone:
                              529, 550, 571, 592, 614, 636, 659, 682, 705, 729,
                              753, 777, 802, 827, 853, 879, 905, 932, 959, 987],
                             dtype=np.int64)
-        self.offsets  = torch.as_tensor(offsets, device=device)
+        self.offsets  = torch.as_tensor(offsets, dtype=torch.long, device=device)
         self.seq_len  = len(self.offsets)
 
     def add(self, s, a, r, v, lp):
