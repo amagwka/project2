@@ -15,14 +15,39 @@ def _default_transform():
     ])
 
 class EmbeddingH5Dataset(Dataset):
-    def __init__(self, h5_path: str, sequence_length: int = 30, frame_gap: int = 1):
+    """Dataset for sequences of cached DINOv2 embeddings stored in an H5 file."""
+
+    def __init__(self, h5_path: str, sequence_length: int = 30, frame_gap: int = 1,
+                 in_memory: bool = True) -> None:
+        """Parameters
+        ----------
+        h5_path: str
+            Path to the H5 file containing embeddings.
+        sequence_length: int
+            Number of consecutive embeddings that form the input sequence.
+        frame_gap: int
+            Target frames ahead to predict.
+        in_memory: bool
+            When True (default) the entire H5 file is loaded into RAM on
+            construction which allows using multiple dataloader workers
+            without each worker reopening the file. This greatly speeds up
+            training for small and medium sized datasets.
+        """
+
         self.h5_path = h5_path
         self.sequence_length = sequence_length
         self.frame_gap = frame_gap
+        self.in_memory = in_memory
+
         import h5py
         with h5py.File(h5_path, "r") as f:
             self.keys = list(f.keys())
             self.lengths = {k: f[k].shape[0] for k in self.keys}
+            self.cache = None
+            if in_memory:
+                self.cache = {k: torch.tensor(f[k][:], dtype=torch.float32)
+                              for k in self.keys}
+
         self.indices = []
         for k, length in self.lengths.items():
             max_start = length - sequence_length - frame_gap
@@ -33,10 +58,20 @@ class EmbeddingH5Dataset(Dataset):
         return len(self.indices)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        import h5py
         key, start = self.indices[idx]
-        with h5py.File(self.h5_path, "r") as f:
-            data = f[key][start:start + self.sequence_length]
-            target = f[key][start + self.sequence_length + self.frame_gap - 1]
-        return torch.tensor(data, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
+
+        if self.cache is not None:
+            data_seq = self.cache[key]
+            data = data_seq[start:start + self.sequence_length]
+            target = data_seq[start + self.sequence_length + self.frame_gap - 1]
+        else:
+            import h5py
+            with h5py.File(self.h5_path, "r") as f:
+                data = torch.tensor(f[key][start:start + self.sequence_length],
+                                   dtype=torch.float32)
+                target = torch.tensor(
+                    f[key][start + self.sequence_length + self.frame_gap - 1],
+                    dtype=torch.float32)
+
+        return data, target
 
