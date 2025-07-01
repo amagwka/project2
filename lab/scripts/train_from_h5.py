@@ -48,22 +48,33 @@ def main() -> None:
 
     for epoch in range(args.epochs):
         epoch_loss = 0.0
+        epoch_mse = 0.0
+        epoch_cos = 0.0
         pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{args.epochs}")
         for seq, target in pbar:
             seq = seq.to(args.device)
             target = target.to(args.device)
             with torch.amp.autocast(args.device, dtype=torch.bfloat16, enabled=args.use_bf16):
-                loss, _ = train_step(model, seq, target)
+                loss, _, mse_loss, cos_loss = train_step(model, seq, target)
             optim.zero_grad()
             loss.backward()
             optim.step()
 
+            writer.add_scalar("loss/mse_step", mse_loss.item(), global_step)
+            writer.add_scalar("loss/cosine_step", cos_loss.item(), global_step)
             writer.add_scalar("loss/step", loss.item(), global_step)
             epoch_loss += loss.item() * seq.size(0)
+            epoch_mse += mse_loss.item() * seq.size(0)
+            epoch_cos += cos_loss.item() * seq.size(0)
             global_step += 1
             pbar.set_postfix(loss=f"{loss.item():.4f}")
-        avg_loss = epoch_loss / len(loader.dataset)
+        dataset_len = len(loader.dataset)
+        avg_loss = epoch_loss / dataset_len
+        avg_mse = epoch_mse / dataset_len
+        avg_cos = epoch_cos / dataset_len
         writer.add_scalar("loss/epoch", avg_loss, epoch)
+        writer.add_scalar("loss/mse_epoch", avg_mse, epoch)
+        writer.add_scalar("loss/cosine_epoch", avg_cos, epoch)
         print(f"Epoch {epoch+1}, avg loss {avg_loss:.4f}")
 
     writer.close()

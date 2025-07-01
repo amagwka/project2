@@ -255,14 +255,26 @@ def create_tmdn_model() -> TemporalManifoldDiffusionNetwork:
     )
 
 
-def tmdn_loss(model_output: torch.Tensor, target: torch.Tensor, topological_loss: torch.Tensor, alpha: float = 0.1) -> torch.Tensor:
+def tmdn_loss(
+    model_output: torch.Tensor,
+    target: torch.Tensor,
+    topological_loss: torch.Tensor,
+    alpha: float = 0.1,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return MSE, cosine and combined losses for the model output."""
     mse_loss = F.mse_loss(model_output, target)
     cosine_loss = 1 - F.cosine_similarity(model_output, target).mean()
     total_loss = mse_loss + cosine_loss + alpha * topological_loss
-    return total_loss
+    return mse_loss, cosine_loss, total_loss
 
 
-def train_step(model: TemporalManifoldDiffusionNetwork, dinov2_sequence: torch.Tensor, next_frame_target: torch.Tensor):
+def train_step(
+    model: TemporalManifoldDiffusionNetwork,
+    dinov2_sequence: torch.Tensor,
+    next_frame_target: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     prediction, topo_loss = model(dinov2_sequence)
-    loss = tmdn_loss(prediction, next_frame_target, topo_loss)
-    return loss, prediction
+    mse_loss, cosine_loss, total_loss = tmdn_loss(
+        prediction, next_frame_target, topo_loss
+    )
+    return total_loss, prediction, mse_loss, cosine_loss

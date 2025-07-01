@@ -20,8 +20,11 @@ class MLPWorldModel(nn.Module):
         return self.net(x)
 
 
-def mlp_loss(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    """Combination of MSE and cosine similarity loss used for prediction."""
+def mlp_loss(
+    prediction: torch.Tensor, target: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return MSE, cosine and combined losses for the prediction."""
     mse = F.mse_loss(prediction, target)
     cosine = 1 - F.cosine_similarity(prediction, target).mean()
-    return mse + cosine
+    total = mse + cosine
+    return mse, cosine, total
