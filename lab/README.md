@@ -4,7 +4,8 @@ This directory contains an implementation of the **Temporal Manifold Diffusion N
 
 Files:
 - `tmdn.py` – the model architecture and helper functions.
-- `dataset.py` – simple dataset class that loads video files and generates sequences of DINOv2 embeddings.
+- `dataset.py` – dataset helpers. `EmbeddingH5Dataset` now caches the entire H5
+  file in memory on first use for fast multi-worker access.
 - `train_tmdn.py` – example training script for running TMDN on a directory of videos.
 
 ## Usage
@@ -62,3 +63,16 @@ python scripts/train_rnn.py --h5 data.h5 --model gru --hidden-dim 1024
 ```
 
 In our tests the trained TMDN outperformed the GRU baseline in prediction accuracy even when the GRU used the bigger hidden size.
+
+## Experiment 3: MLP World Model
+
+The script `scripts/train_mlp.py` implements a simple feed-forward baseline that
+predicts the next embedding from a single state. Use the cached embedding H5
+file and train the model with:
+
+```bash
+python scripts/train_mlp.py --h5 data.h5 --epochs 5
+```
+
+This baseline is useful for quick experiments when only one frame of history is
+available.
