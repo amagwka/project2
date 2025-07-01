@@ -118,7 +118,6 @@ class SocketAppEnv(gym.Env):
             perf_counter() - self._last_wm_time >= 1.0
         ):
             context = np.stack(self.obs_history, axis=0).astype(np.float32)
-            print("triggered context")
             try:
                 self.wm_socket.settimeout(0.2)
                 self.wm_socket.sendto(context.tobytes(), self.wm_addr)
@@ -127,7 +126,7 @@ class SocketAppEnv(gym.Env):
                 pred = np.frombuffer(pred_bytes, dtype=np.float32)
                 if pred.size == self.state_dim:
                     dist = cosine_distance(pred, obs_np)
-                    model_bonus = -dist/10
+                    model_bonus = -dist*10
             except socket.timeout:
                 model_bonus = 99.99
             except Exception:

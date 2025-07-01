@@ -31,7 +31,7 @@ def parse_args():
 def main() -> None:
     args = parse_args()
     dataset = EmbeddingH5Dataset(args.h5, sequence_length=1)
-    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=8)
 
     model = MLPWorldModel(hidden_dim=args.hidden_dim, num_layers=args.layers).to(args.device)
     if args.checkpoint:

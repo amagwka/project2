@@ -35,7 +35,7 @@ def main() -> None:
     global paused
     Thread(target=hotkey_listener, daemon=True).start()
 
-    env = SocketAppEnv(device=DEVICE, combined_server=True,
+    env = SocketAppEnv(10e10,device=DEVICE, combined_server=True,
                        start_servers=True,use_world_model=True, enable_logging=True)
     obs, _ = env.reset()
 
