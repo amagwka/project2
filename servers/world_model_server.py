@@ -9,7 +9,7 @@ DEFAULT_MODEL_PATH = "lab/scripts/rnn_lstm.pt"
 
 def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str = '0.0.0.0',
                                  port: int = 5007, obs_dim: int = 384,
-                                 seq_len: int = 30, device: str = 'cpu'):
+                                 seq_len: int = 30, device: str = 'cuda'):
     """Start a UDP server that predicts the next observation embedding."""
     model = LSTMWorldModel(obs_dim=obs_dim).to(device)
     if model_path:
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=5007, help='UDP port to listen on')
     parser.add_argument('--obs-dim', type=int, default=384, help='Dimension of observation embeddings')
     parser.add_argument('--seq-len', type=int, default=30, help='Length of the observation sequence')
-    parser.add_argument('--device', default='cpu', help='Torch device')
+    parser.add_argument('--device', default='cuda', help='Torch device')
     args = parser.parse_args()
 
     start_udp_world_model_server(

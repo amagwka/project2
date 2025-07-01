@@ -16,7 +16,6 @@ from models.ppo import ppo_update
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 STATE_DIM, ACTION_DIM, SEQ_LEN = 384, 7, 70
 
-# Global pause flag toggled via hotkey
 paused = False
 
 
@@ -37,7 +36,7 @@ def main() -> None:
     Thread(target=hotkey_listener, daemon=True).start()
 
     env = SocketAppEnv(device=DEVICE, combined_server=True,
-                       start_servers=False, enable_logging=True)
+                       start_servers=True,use_world_model=True, enable_logging=True)
     obs, _ = env.reset()
 
     actor = Actor(state_dim=STATE_DIM, action_dim=ACTION_DIM).to(DEVICE)
@@ -65,7 +64,7 @@ def main() -> None:
         obs, reward, terminated, truncated, _ = env.step(action.item())
         act_onehot = act_onehot.unsqueeze(0)
         logger.log_scalar("Reward/Total", reward, step_count)
-        logger.log_histogram("Action/Probs", dist.probs.squeeze(0).cpu().numpy(), step_count)
+        logger.log_histogram("Action/Probs", dist.probs.squeeze(0).detach().cpu().numpy(), step_count)
 
         value = critic(emb_seq, act_onehot.to(DEVICE)).squeeze().detach()
         logp_detached = logp.detach()
