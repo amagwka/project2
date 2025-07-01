@@ -10,7 +10,7 @@ from servers.constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
 
 from utils.observations import LocalObs
 from utils.intrinsic import E3BIntrinsicReward
-from utils.wasserstein import wasserstein_distance
+from utils.cosine import cosine_distance
 
 class SocketAppEnv(gym.Env):
     metadata = {"render_modes": []}
@@ -124,7 +124,7 @@ class SocketAppEnv(gym.Env):
                 # test here for timeout error
                 pred = np.frombuffer(pred_bytes, dtype=np.float32)
                 if pred.size == self.state_dim:
-                    dist = wasserstein_distance(pred, obs_np)
+                    dist = cosine_distance(pred, obs_np)
                     model_bonus = -dist/10
             except socket.timeout:
                 model_bonus = 99.99
