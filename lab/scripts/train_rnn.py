@@ -47,20 +47,31 @@ def main():
     global_step = 0
     for epoch in range(args.epochs):
         epoch_loss = 0.0
+        epoch_mse = 0.0
+        epoch_cos = 0.0
         for seq, target in loader:
             seq = seq.to(args.device)
             target = target.to(args.device)
             pred = model(seq)
-            loss = rnn_loss(pred, target)
+            mse_loss, cos_loss, loss = rnn_loss(pred, target)
             optim.zero_grad()
             loss.backward()
             optim.step()
 
+            writer.add_scalar("loss/mse_step", mse_loss.item(), global_step)
+            writer.add_scalar("loss/cosine_step", cos_loss.item(), global_step)
             writer.add_scalar("loss/step", loss.item(), global_step)
             epoch_loss += loss.item() * seq.size(0)
+            epoch_mse += mse_loss.item() * seq.size(0)
+            epoch_cos += cos_loss.item() * seq.size(0)
             global_step += 1
-        avg = epoch_loss / len(loader.dataset)
+        dataset_len = len(loader.dataset)
+        avg = epoch_loss / dataset_len
+        avg_mse = epoch_mse / dataset_len
+        avg_cos = epoch_cos / dataset_len
         writer.add_scalar("loss/epoch", avg, epoch)
+        writer.add_scalar("loss/mse_epoch", avg_mse, epoch)
+        writer.add_scalar("loss/cosine_epoch", avg_cos, epoch)
         print(f"Epoch {epoch+1}, avg loss {avg:.4f}")
 
     writer.close()

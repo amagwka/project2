@@ -18,7 +18,11 @@ class RNNPredictor(nn.Module):
         last = out[:, -1]
         return self.fc(last)
 
-def rnn_loss(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+def rnn_loss(
+    prediction: torch.Tensor, target: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return MSE, cosine and combined losses for the prediction."""
     mse = F.mse_loss(prediction, target)
     cosine = 1 - F.cosine_similarity(prediction, target).mean()
-    return mse + cosine
+    total = mse + cosine
+    return mse, cosine, total
