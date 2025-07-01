@@ -2,7 +2,7 @@ import socket
 import time
 from pynput.keyboard import Controller, Key
 from servers.reward_server import ExternalRewardTracker
-from servers.constants import ARROW_DELAY, WAIT_DELAY, ARROW_IDX, WAIT_IDX
+from servers.constants import ARROW_DELAY, WAIT_DELAY, NON_ARROW_DELAY, ARROW_IDX, WAIT_IDX
 
 # Keyboard setup
 ACTION_KEYS = [Key.up, Key.down, Key.left, Key.right, 'z', 'x', None]
@@ -20,6 +20,8 @@ def send_action(action_idx):
         keyboard.press(key)
         if action_idx in ARROW_IDX:
             time.sleep(ARROW_DELAY)
+        else:
+            time.sleep(NON_ARROW_DELAY)
         keyboard.release(key)
     except IndexError:
         print(f"[Error] Invalid action index: {action_idx}")
