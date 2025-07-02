@@ -6,7 +6,15 @@ import subprocess
 import sys
 from time import sleep, perf_counter
 from threading import Thread, Event
-from servers.constants import ARROW_DELAY, WAIT_DELAY, NON_ARROW_DELAY, ARROW_IDX, WAIT_IDX
+from servers.constants import (
+    ARROW_DELAY,
+    WAIT_DELAY,
+    NON_ARROW_DELAY,
+    ARROW_IDX,
+    WAIT_IDX,
+)
+from typing import Optional
+from config import EnvConfig
 
 from utils.observations import LocalObs
 from utils.intrinsic import E3BIntrinsicReward
@@ -15,23 +23,50 @@ from utils.cosine import cosine_distance
 class SocketAppEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self,
-                 max_steps=1000,
-                 device="cuda",
-                 action_dim=7,
-                 state_dim=384,
-                 action_host="127.0.0.1", action_port=5005,
-                 reward_host="127.0.0.1", reward_port=5006,
-                 embedding_model="facebook/dinov2-with-registers-small",
-                 combined_server=True,
-                 start_servers=True,
-                 enable_logging=True,
-                 use_world_model=True,
-                 world_model_host="127.0.0.1", world_model_port=5007,
-                 world_model_path="lab/scripts/mlp_world_model.pt",
-                 world_model_type="mlp",
-                 world_model_interval=5,
-                 world_model_time=1.0):
+    def __init__(
+        self,
+        max_steps=1000,
+        device="cuda",
+        action_dim=7,
+        state_dim=384,
+        action_host="127.0.0.1",
+        action_port=5005,
+        reward_host="127.0.0.1",
+        reward_port=5006,
+        embedding_model="facebook/dinov2-with-registers-small",
+        combined_server=True,
+        start_servers=True,
+        enable_logging=True,
+        use_world_model=True,
+        world_model_host="127.0.0.1",
+        world_model_port=5007,
+        world_model_path="lab/scripts/mlp_world_model.pt",
+        world_model_type="mlp",
+        world_model_interval=5,
+        world_model_time=1.0,
+        config: Optional[EnvConfig] = None,
+    ):
+
+        if config is not None:
+            max_steps = config.max_steps
+            device = config.device
+            action_dim = config.action_dim
+            state_dim = config.state_dim
+            action_host = config.action_host
+            action_port = config.action_port
+            reward_host = config.reward_host
+            reward_port = config.reward_port
+            embedding_model = config.embedding_model
+            combined_server = config.combined_server
+            start_servers = config.start_servers
+            enable_logging = config.enable_logging
+            use_world_model = config.use_world_model
+            world_model_host = config.world_model.host
+            world_model_port = config.world_model.port
+            world_model_path = config.world_model.model_path
+            world_model_type = config.world_model.model_type
+            world_model_interval = config.world_model.interval_steps
+            world_model_time = config.world_model.time_interval
 
         super().__init__()
         self.max_steps = max_steps
