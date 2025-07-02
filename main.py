@@ -16,7 +16,7 @@ from models.ppo import ppo_update
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 STATE_DIM, ACTION_DIM, SEQ_LEN = 384, 7, 70
 
-paused = False
+paused = True
 
 
 def hotkey_listener() -> None:

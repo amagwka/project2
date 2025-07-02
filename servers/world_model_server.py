@@ -16,7 +16,7 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
     """Start a UDP server that predicts the next observation embedding."""
     model_type = model_type.lower()
     if model_type == 'mlp':
-        model = MLPWorldModel(input_dim=obs_dim).to(device)
+        model = MLPWorldModel(input_dim=obs_dim,num_layers=3).to(device)
     elif model_type == 'gru':
         model = RNNPredictor(input_dim=obs_dim, rnn_type='GRU').to(device)
     else:

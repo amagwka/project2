@@ -11,7 +11,7 @@ class MLPWorldModel(nn.Module):
         dim = input_dim
         for _ in range(max(1, num_layers - 1)):
             layers.append(nn.Linear(dim, hidden_dim))
-            layers.append(nn.ReLU())
+            layers.append(nn.Mish())
             dim = hidden_dim
         layers.append(nn.Linear(dim, input_dim))
         self.net = nn.Sequential(*layers)
