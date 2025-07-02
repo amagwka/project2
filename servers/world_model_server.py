@@ -2,6 +2,8 @@ import socket
 import numpy as np
 import torch
 from models.world_model import LSTMWorldModel
+from lab.rnn_baseline import RNNPredictor
+from lab.mlp_world_model import MLPWorldModel
 
 
 DEFAULT_MODEL_PATH = "lab/scripts/rnn_lstm.pt"
@@ -9,17 +11,22 @@ DEFAULT_MODEL_PATH = "lab/scripts/rnn_lstm.pt"
 
 def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str = '0.0.0.0',
                                  port: int = 5007, obs_dim: int = 384,
-                                 seq_len: int = 30, device: str = 'cuda'):
+                                 seq_len: int = 30, device: str = 'cuda',
+                                 model_type: str = 'lstm'):
     """Start a UDP server that predicts the next observation embedding."""
-    model = LSTMWorldModel(obs_dim=obs_dim).to(device)
+    model_type = model_type.lower()
+    if model_type == 'mlp':
+        model = MLPWorldModel(input_dim=obs_dim).to(device)
+    elif model_type == 'gru':
+        model = RNNPredictor(input_dim=obs_dim, rnn_type='GRU').to(device)
+    else:
+        model = LSTMWorldModel(obs_dim=obs_dim).to(device)
     if model_path:
         try:
             state = torch.load(model_path, map_location=device)
             try:
                 model.load_state_dict(state)
             except RuntimeError:
-                # Older checkpoints may use ``lstm`` as the module name.
-                # Rename keys on-the-fly to match the current implementation.
                 renamed = {}
                 for k, v in state.items():
                     if k.startswith("lstm."):
@@ -78,6 +85,8 @@ if __name__ == '__main__':
     parser.add_argument('--obs-dim', type=int, default=384, help='Dimension of observation embeddings')
     parser.add_argument('--seq-len', type=int, default=30, help='Length of the observation sequence')
     parser.add_argument('--device', default='cuda', help='Torch device')
+    parser.add_argument('--model-type', default='lstm', choices=['lstm', 'gru', 'mlp'],
+                        help='Type of world model to load')
     args = parser.parse_args()
 
     start_udp_world_model_server(
@@ -87,4 +96,5 @@ if __name__ == '__main__':
         obs_dim=args.obs_dim,
         seq_len=args.seq_len,
         device=args.device,
+        model_type=args.model_type,
     )

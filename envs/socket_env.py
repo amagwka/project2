@@ -27,7 +27,11 @@ class SocketAppEnv(gym.Env):
                  start_servers=False,
                  enable_logging=False,
                  use_world_model=False,
-                 world_model_host="127.0.0.1", world_model_port=5007):
+                 world_model_host="127.0.0.1", world_model_port=5007,
+                 world_model_path="lab/scripts/rnn_lstm.pt",
+                 world_model_type="lstm",
+                 world_model_interval=5,
+                 world_model_time=1.0):
 
         super().__init__()
         self.max_steps = max_steps
@@ -50,6 +54,10 @@ class SocketAppEnv(gym.Env):
         self.enable_logging = enable_logging
         self.use_world_model = use_world_model
         self.wm_addr = (world_model_host, world_model_port)
+        self.world_model_path = world_model_path
+        self.world_model_type = world_model_type
+        self.wm_interval_steps = int(max(1, world_model_interval))
+        self.wm_time_interval = float(world_model_time)
         self._server_processes = []
         self._logger = None
         self._last_action_time = perf_counter()
@@ -115,7 +123,8 @@ class SocketAppEnv(gym.Env):
         if (
             self.use_world_model and
             len(self.obs_history) == 30 and
-            perf_counter() - self._last_wm_time >= 1.0
+            self.step_count % self.wm_interval_steps == 0 and
+            perf_counter() - self._last_wm_time >= self.wm_time_interval
         ):
             context = np.stack(self.obs_history, axis=0).astype(np.float32)
             try:
@@ -201,6 +210,12 @@ class SocketAppEnv(gym.Env):
             self._server_processes.append(p)
 
         if self.use_world_model:
-            cmd = [sys.executable, '-m', 'servers.world_model_server']
+            cmd = [
+                sys.executable, '-m', 'servers.world_model_server',
+                '--model-path', self.world_model_path,
+                '--model-type', self.world_model_type,
+                '--host', self.wm_addr[0],
+                '--port', str(self.wm_addr[1])
+            ]
             p = subprocess.Popen(cmd)
             self._server_processes.append(p)
