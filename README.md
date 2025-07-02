@@ -28,13 +28,15 @@ This repository implements a reinforcement learning setup that interacts with an
 * `models/ppo.py` performs the PPO update using log‑prob ratios and clipping.
 * `utils/rollout.py` provides a rollout buffer and GAE computation.
 
-## Redundant Parts
-* `ExternalRewardTracker` exists in both `action_module.py` and `external_reward.py`.
-* `simple.ipynb` repeats UDP utilities and environment logic that already live in the modules.
+## Setup
+Install the Python dependencies with the helper script:
 
-## Recommendations
-1. Consolidate reward tracking and server utilities into a single module.
-2. Replace the notebook with a proper training script that uses the environment, networks, PPO loop and rollout buffer.
+```bash
+./scripts/setup.sh
+```
+
+The script creates a virtual environment in `.venv` and installs the
+packages pinned in `requirements.txt`.
 
 ## Running
 1. Start the combined UDP server:
@@ -58,4 +60,5 @@ This repository implements a reinforcement learning setup that interacts with an
    python examples/random_agent.py
    ```
 
-Dependencies include `torch`, `gymnasium`, `numpy`, `transformers`, `pymem`, `psutil`, `pynput` and `opencv-python`.
+Dependencies include `torch`, `gymnasium`, `numpy`, `transformers`, `pymem`,
+`psutil`, `pynput` and `opencv-python`.

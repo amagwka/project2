@@ -123,6 +123,12 @@ class SocketAppEnv(gym.Env):
         if self.start_servers:
             self._launch_servers()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+
     def reset(self, seed=None, options=None):
         self.step_count = 0
         self._send_reset()
@@ -234,17 +240,29 @@ class SocketAppEnv(gym.Env):
             proc.wait(timeout=1)
 
     def _launch_servers(self):
-        """Launch reward/action servers as subprocesses."""
-        if self.combined_server:
-            cmd = [sys.executable, '-m', 'servers.action_server']
-            p = subprocess.Popen(cmd)
-            self._server_processes.append(p)
-        else:
-            cmd = [sys.executable, '-m', 'servers.reward_server']
-            p = subprocess.Popen(cmd)
-            self._server_processes.append(p)
+        """Launch reward/action servers as subprocesses if ports are free."""
+        def port_in_use(addr):
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.bind(addr)
+            except OSError:
+                s.close()
+                return True
+            s.close()
+            return False
 
-        if self.use_world_model:
+        if self.combined_server:
+            if not port_in_use(self.action_addr):
+                cmd = [sys.executable, '-m', 'servers.action_server']
+                p = subprocess.Popen(cmd)
+                self._server_processes.append(p)
+        else:
+            if not port_in_use(self.reward_addr):
+                cmd = [sys.executable, '-m', 'servers.reward_server']
+                p = subprocess.Popen(cmd)
+                self._server_processes.append(p)
+
+        if self.use_world_model and not port_in_use(self.wm_addr):
             cmd = [
                 sys.executable, '-m', 'servers.world_model_server',
                 '--model-path', self.world_model_path,
