@@ -61,7 +61,7 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
                 sock.sendto(b'PONG', addr)
                 continue
 
-            arr = np.frombuffer(data, dtype=np.float32)
+            arr = np.frombuffer(data, dtype=np.float32).copy()
             if arr.size != seq_len * obs_dim:
                 sock.sendto(b'ERR', addr)
                 continue
