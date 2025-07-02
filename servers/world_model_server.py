@@ -65,9 +65,13 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
             if arr.size != seq_len * obs_dim:
                 sock.sendto(b'ERR', addr)
                 continue
-            obs_seq = torch.from_numpy(arr.reshape(1, seq_len, obs_dim)).to(device)
+            obs_seq = torch.from_numpy(arr.reshape(seq_len, obs_dim)).to(device)
             with torch.no_grad():
-                pred = model(obs_seq).cpu().numpy().astype(np.float32)
+                if model_type == 'mlp':
+                    inp = obs_seq[-1].unsqueeze(0)
+                else:
+                    inp = obs_seq.unsqueeze(0)
+                pred = model(inp).squeeze(0).cpu().numpy().astype(np.float32)
             sock.sendto(pred.tobytes(), addr)
     except KeyboardInterrupt:
         print('\n[WorldModelServer] Shutdown.')
