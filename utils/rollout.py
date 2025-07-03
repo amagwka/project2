@@ -16,16 +16,28 @@ class RolloutBufferNoDone:
         self.reward   = torch.zeros(size, device=device)
         self.value    = torch.zeros(size, device=device)
         self.logprob  = torch.zeros(size, device=device)
-        offsets = np.array([  0,   1,   2,   4,   6,   9,  12,  15,  19,  23,
-                              28,  33,  38,  44,  50,  56,  63,  70,  78,  86,
-                              94, 103, 112, 122, 132, 142, 153, 164, 176, 188,
-                             200, 213, 226, 240, 254, 268, 283, 298, 313, 329,
-                             345, 362, 379, 396, 414, 432, 451, 470, 489, 509,
-                             529, 550, 571, 592, 614, 636, 659, 682, 705, 729,
-                             753, 777, 802, 827, 853, 879, 905, 932, 959, 987],
-                            dtype=np.int64)
-        self.offsets  = torch.as_tensor(offsets, dtype=torch.long, device=device)
-        self.seq_len  = len(self.offsets)
+        # Default offsets roughly follow a logarithmic spacing to capture a wide
+        # history while keeping sequences short.  For small buffers, fall back to
+        # a simple increasing range so that at least one valid sequence exists.
+        default_offsets = np.array([
+            0, 1, 2, 4, 6, 9, 12, 15, 19, 23,
+            28, 33, 38, 44, 50, 56, 63, 70, 78, 86,
+            94, 103, 112, 122, 132, 142, 153, 164, 176, 188,
+            200, 213, 226, 240, 254, 268, 283, 298, 313, 329,
+            345, 362, 379, 396, 414, 432, 451, 470, 489, 509,
+            529, 550, 571, 592, 614, 636, 659, 682, 705, 729,
+            753, 777, 802, 827, 853, 879, 905, 932, 959, 987
+        ], dtype=np.int64)
+
+        if size <= 1:
+            offsets = np.array([0], dtype=np.int64)
+        elif size <= len(default_offsets):
+            offsets = np.arange(size, dtype=np.int64)
+        else:
+            offsets = default_offsets
+
+        self.offsets = torch.as_tensor(offsets[offsets < size], dtype=torch.long, device=device)
+        self.seq_len = len(self.offsets)
 
     def add(self, s, a, r, v, lp):
         self.state   [self.ptr] = s
@@ -94,9 +106,17 @@ class RolloutBufferNoDone:
 
         
 def compute_gae(reward, value, gamma=0.995, lam=0.99):
+    """Compute Generalised Advantage Estimation (GAE).
+
+    When called with empty tensors, this returns empty results instead of raising
+    an ``IndexError``.
+    """
     T = reward.size(0)
     returns   = torch.empty_like(reward)
     advantage = torch.empty_like(reward)
+    if T == 0:
+        return returns, advantage
+
     next_val  = value[-1]
     gae = 0.0
     for t in reversed(range(T)):
@@ -105,5 +125,9 @@ def compute_gae(reward, value, gamma=0.995, lam=0.99):
         advantage[t] = gae
         returns[t]   = gae + value[t]
         next_val     = value[t]
-    advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+    std = advantage.std()
+    if std > 1e-8:
+        advantage = (advantage - advantage.mean()) / (std + 1e-8)
+    else:  # avoid NaNs when variance is zero
+        advantage = advantage - advantage.mean()
     return returns, advantage
