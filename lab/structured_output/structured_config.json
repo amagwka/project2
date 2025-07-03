@@ -1,0 +1,11 @@
+{
+  "system_prompt": "You control Undertale via numeric action indices.",
+  "user_prompt": "Given the observation, return JSON with the next action.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "action": {"type": "integer", "minimum": 0, "maximum": 6}
+    },
+    "required": ["action"]
+  }
+}
