@@ -1,7 +1,10 @@
+import argparse
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.distributions as td
+from stable_baselines3 import PPO as SB3PPO
+from stable_baselines3.common.env_util import make_vec_env
 from time import sleep
 from threading import Thread
 from pynput import keyboard
@@ -38,6 +41,51 @@ def hotkey_listener() -> None:
 
 def main() -> None:
     global paused
+    parser = argparse.ArgumentParser(description="SocketApp PPO trainer")
+    parser.add_argument("--sb3", action="store_true",
+                        help="use stable-baselines3 PPO")
+    parser.add_argument("--timesteps", type=int, default=5000,
+                        help="training timesteps for sb3")
+    args = parser.parse_args()
+
+    if args.sb3:
+        env_fn = lambda: SocketAppEnv(
+            cfg.env.max_steps,
+            device=cfg.env.device,
+            action_dim=cfg.env.action_dim,
+            state_dim=cfg.env.state_dim,
+            action_host=cfg.env.action_host,
+            action_port=cfg.env.action_port,
+            reward_host=cfg.env.reward_host,
+            reward_port=cfg.env.reward_port,
+            embedding_model=cfg.env.embedding_model,
+            combined_server=cfg.env.combined_server,
+            start_servers=cfg.env.start_servers,
+            enable_logging=cfg.env.enable_logging,
+            use_world_model=cfg.env.use_world_model,
+            world_model_host=cfg.env.world_model.host,
+            world_model_port=cfg.env.world_model.port,
+            world_model_path=cfg.env.world_model.model_path,
+            world_model_type=cfg.env.world_model.model_type,
+            world_model_interval=cfg.env.world_model.interval_steps,
+            world_model_time=cfg.env.world_model.time_interval,
+        )
+        vec_env = make_vec_env(env_fn, n_envs=1)
+        model = SB3PPO(
+            "MlpPolicy",
+            vec_env,
+            n_steps=cfg.training.rollout_len,
+            batch_size=cfg.training.rollout_len,
+            learning_rate=cfg.training.learning_rate,
+            verbose=1,
+        )
+        model.learn(total_timesteps=args.timesteps)
+        obs = vec_env.reset()
+        action, _ = model.predict(obs, deterministic=True)
+        print("Learned action:", action)
+        vec_env.close()
+        return
+
     Thread(target=hotkey_listener, daemon=True).start()
 
     env = SocketAppEnv(

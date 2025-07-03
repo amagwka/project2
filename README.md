@@ -62,3 +62,17 @@ packages pinned in `requirements.txt`.
 
 Dependencies include `torch`, `gymnasium`, `numpy`, `transformers`, `pymem`,
 `psutil`, `pynput` and `opencv-python`.
+
+### Stable Baselines Example
+
+To train using the PPO implementation from `stable-baselines3` on any of the
+provided environments, run:
+
+```bash
+python examples/stable_ppo.py --env continuous  # bandit|continuous|socket
+```
+
+The script supports `MultiArmedBanditEnv`, the continuous
+`ContinuousBanditEnv` and the main `SocketAppEnv` used for Undertale RL.
+It demonstrates how to plug Stable Baselines PPO into the existing
+infrastructure.
