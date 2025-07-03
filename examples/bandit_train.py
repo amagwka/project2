@@ -6,6 +6,7 @@ import torch.distributions as td
 from envs.bandit_env import MultiArmedBanditEnv
 from models.ppo import ppo_update
 from utils.rollout import RolloutBufferNoDone, compute_gae
+from utils import logger
 
 
 def main():
@@ -39,6 +40,7 @@ def main():
     opt_critic = optim.Adam(critic.parameters(), lr=0.01)
 
     obs, _ = env.reset()
+    step_count = 0
     for step in range(200):
         s = torch.tensor(obs, dtype=torch.float32, device=device)
         seq = buffer.get_latest_state_seq(s)
@@ -49,14 +51,26 @@ def main():
         onehot = nn.functional.one_hot(action, action_dim).float()
 
         obs, reward, _, _, _ = env.step(int(action))
+        logger.log_scalar("Reward/Total", reward, step_count)
+        logger.log_histogram("Action/Probs",
+                             dist.probs.detach().cpu().numpy(), step_count)
         value = critic(seq, onehot.unsqueeze(0)).detach()
         buffer.add(s, onehot, reward, value, logp.detach())
 
         if buffer.ready():
             s_batch, a_batch, r_batch, v_batch, lp_batch = buffer.get()
             returns, adv = compute_gae(r_batch, v_batch)
-            ppo_update(actor, critic, opt_actor, opt_critic,
-                       s_batch, a_batch, lp_batch, returns, adv)
+            metrics = ppo_update(actor, critic, opt_actor, opt_critic,
+                                 s_batch, a_batch, lp_batch, returns, adv)
+            logger.log_dict({
+                "Loss/Actor": metrics.get("actor_loss", 0.0),
+                "Loss/Critic": metrics.get("critic_loss", 0.0),
+                "KLDiv": metrics.get("kl_div", 0.0),
+            }, step_count)
+            print(f"[PPO Update] Step {step_count}")
+
+        step_count += 1
+        logger.log_scalar("Reward/Total", reward, step_count)
 
     with torch.no_grad():
         seq = torch.zeros(1, buffer.seq_len, state_dim, device=device)
