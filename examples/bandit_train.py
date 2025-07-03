@@ -1,7 +1,10 @@
+import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.distributions as td
+from stable_baselines3 import PPO as SB3PPO
+from stable_baselines3.common.env_util import make_vec_env
 
 from envs.bandit_env import MultiArmedBanditEnv
 from models.ppo import ppo_update
@@ -9,8 +12,27 @@ from utils.rollout import RolloutBufferNoDone, compute_gae
 from utils import logger
 
 
-def main():
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Bandit PPO trainer")
+    parser.add_argument("--sb3", action="store_true",
+                        help="use stable-baselines3 PPO")
+    parser.add_argument("--timesteps", type=int, default=20000,
+                        help="training timesteps for sb3")
+    args = parser.parse_args()
+
     env = MultiArmedBanditEnv([0.43, 0.57])
+
+    if args.sb3:
+        vec_env = make_vec_env(lambda: MultiArmedBanditEnv([0.43, 0.57]), n_envs=1)
+        model = SB3PPO("MlpPolicy", vec_env, n_steps=256, batch_size=256,
+                       learning_rate=1e-4, verbose=1)
+        model.learn(total_timesteps=args.timesteps)
+        obs = vec_env.reset()
+        action, _ = model.predict(obs, deterministic=True)
+        print("Learned action:", action)
+        vec_env.close()
+        return
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
