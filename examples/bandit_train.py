@@ -10,7 +10,7 @@ from utils.rollout import RolloutBufferNoDone, compute_gae
 
 def main():
     env = MultiArmedBanditEnv([0.1, 0.9])
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
     buffer = RolloutBufferNoDone(32, state_dim, action_dim, device)
@@ -40,7 +40,7 @@ def main():
 
     obs, _ = env.reset()
     for step in range(200):
-        s = torch.tensor(obs, dtype=torch.float32)
+        s = torch.tensor(obs, dtype=torch.float32, device=device)
         seq = buffer.get_latest_state_seq(s)
         logits = actor(seq)
         dist = td.Categorical(logits=logits.squeeze(0))
@@ -59,7 +59,7 @@ def main():
                        s_batch, a_batch, lp_batch, returns, adv)
 
     with torch.no_grad():
-        seq = torch.zeros(1, buffer.seq_len, state_dim)
+        seq = torch.zeros(1, buffer.seq_len, state_dim, device=device)
         logits = actor(seq)
         print("Learned probs:", logits.softmax(-1))
 
