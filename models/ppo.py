@@ -3,11 +3,6 @@ import torch.nn.functional as F
 import torch.distributions as td
 
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
-STATE_DIM     = 384
-ACTION_DIM    = 7
-ROLLOUT_LEN   = 512
-UPDATE_EVERY  = 512
-LR            = 3e-4
 CLIP_EPS      = 0.2
 
 def ppo_update(actor, critic, optim_actor, optim_critic,
@@ -23,7 +18,7 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
         "num_batches": 0,
     }
 
-    for _ in range(3):  # epochs
+    for _ in range(1):  # epochs
         for start in range(0, batch, 256):
             sl = idx[start:start+256]
 

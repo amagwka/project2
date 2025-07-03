@@ -10,11 +10,11 @@ from utils import logger
 
 
 def main():
-    env = MultiArmedBanditEnv([0.1, 0.9])
+    env = MultiArmedBanditEnv([0.43, 0.57])
     device = "cuda" if torch.cuda.is_available() else "cpu"
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
-    buffer = RolloutBufferNoDone(32, state_dim, action_dim, device)
+    buffer = RolloutBufferNoDone(512, state_dim, action_dim, device)
 
     class Actor(nn.Module):
         def __init__(self):
@@ -36,12 +36,12 @@ def main():
 
     actor = Actor().to(device)
     critic = Critic().to(device)
-    opt_actor = optim.Adam(actor.parameters(), lr=0.01)
-    opt_critic = optim.Adam(critic.parameters(), lr=0.01)
+    opt_actor = optim.Adam(actor.parameters(), lr=0.0001)
+    opt_critic = optim.Adam(critic.parameters(), lr=0.0001)
 
     obs, _ = env.reset()
     step_count = 0
-    for step in range(200):
+    for step in range(20000):
         s = torch.tensor(obs, dtype=torch.float32, device=device)
         seq = buffer.get_latest_state_seq(s)
         logits = actor(seq)
@@ -67,7 +67,7 @@ def main():
                 "Loss/Critic": metrics.get("critic_loss", 0.0),
                 "KLDiv": metrics.get("kl_div", 0.0),
             }, step_count)
-            print(f"[PPO Update] Step {step_count}")
+            #print(f"[PPO Update] Step {step_count}")
 
         step_count += 1
         logger.log_scalar("Reward/Total", reward, step_count)
