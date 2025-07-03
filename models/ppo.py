@@ -47,7 +47,7 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
 
             # Critic forward pass
             q_pred = critic(state_seq, actions)  # critic expects same seq
-            critic_loss = F.mse_loss(q_pred.squeeze(), returns)
+            critic_loss = F.mse_loss(q_pred, returns)
 
             loss = actor_loss + 0.5 * critic_loss
 

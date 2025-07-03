@@ -125,7 +125,7 @@ def compute_gae(reward, value, gamma=0.995, lam=0.99):
         advantage[t] = gae
         returns[t]   = gae + value[t]
         next_val     = value[t]
-    std = advantage.std()
+    std = advantage.std(unbiased=False)
     if std > 1e-8:
         advantage = (advantage - advantage.mean()) / (std + 1e-8)
     else:  # avoid NaNs when variance is zero
