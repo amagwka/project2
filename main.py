@@ -93,7 +93,9 @@ def main() -> None:
         obs, reward, terminated, truncated, _ = env.step(action.item())
         act_onehot = act_onehot.unsqueeze(0)
         logger.log_scalar("Reward/Total", reward, step_count)
-        logger.log_histogram("Action/Probs", dist.probs.squeeze(0).detach().cpu().numpy(), step_count)
+        action_probs = dist.probs.squeeze(0).detach().cpu().numpy()
+        logger.log_histogram("Action/Probs", action_probs, step_count)
+        logger.log_action_bins("Action/Bins", action_probs, step_count)
 
         value = critic(emb_seq, act_onehot.to(DEVICE)).squeeze().detach()
         logp_detached = logp.detach()

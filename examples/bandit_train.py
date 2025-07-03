@@ -52,8 +52,9 @@ def main():
 
         obs, reward, _, _, _ = env.step(int(action))
         logger.log_scalar("Reward/Total", reward, step_count)
-        logger.log_histogram("Action/Probs",
-                             dist.probs.detach().cpu().numpy(), step_count)
+        action_probs = dist.probs.detach().cpu().numpy()
+        logger.log_histogram("Action/Probs", action_probs, step_count)
+        logger.log_action_bins("Action/Bins", action_probs, step_count)
         value = critic(seq, onehot.unsqueeze(0)).detach()
         buffer.add(s, onehot, reward, value, logp.detach())
 
