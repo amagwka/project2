@@ -1,6 +1,8 @@
 import socket
+import cv2
 from utils.observations import LocalObs
 from lmstudio import Client
+from lmstudio.history import Chat
 
 # Address of the combined action server
 ACTION_ADDR = ("127.0.0.1", 5005)
@@ -19,12 +21,12 @@ def query_action(client: Client, frame) -> int:
     The LM is expected to reply with a plain integer in the range 0‑6.
     """
     prompt = "Given the current Undertale frame, respond with the next action index (0-6)."
-    params = {
-        "messages": [{"role": "user", "content": prompt}],
-        "response_format": {"type": "text"},
-    }
-    response = client.llm.remote_call("chat", params)
-    text = response["choices"][0]["message"]["content"].strip()
+    _, buffer = cv2.imencode(".png", frame)
+    chat = Chat()
+    chat.add_user_message(prompt, images=[buffer.tobytes()])
+    model = client.llm.model()
+    result = model.respond(chat, response_format={"type": "text"})
+    text = result.content.strip()
     try:
         return int(text)
     except ValueError:
