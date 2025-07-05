@@ -9,17 +9,29 @@ from lmstudio.history import Chat
 ACTION_ADDR = ("127.0.0.1", 5005)
 
 # Prompts and JSON schema for structured output
+ACTION_NAMES = [
+    "up",
+    "down",
+    "left",
+    "right",
+    "enter",
+    "shift",
+    "wait",
+]
+NAME_TO_INDEX = {name: idx for idx, name in enumerate(ACTION_NAMES)}
+
 SYSTEM_PROMPT = (
-    "You control Undertale by sending numeric action indices from 0 to 6."
+    "You control Undertale by sending actions from the following list: "
+    + ", ".join(ACTION_NAMES) + "."
 )
 USER_PROMPT = (
-    "Given the current frame, respond with JSON {\"action\": <index>} where"
-    " <index> is the next action to take."
+    "Given the current frame, respond with JSON {\"action\": <action>} where"
+    " <action> is exactly one of: " + ", ".join(ACTION_NAMES) + "."
 )
 SCHEMA = {
     "type": "object",
     "properties": {
-        "action": {"type": "integer", "minimum": 0, "maximum": 6},
+        "action": {"type": "string", "enum": ACTION_NAMES},
     },
     "required": ["action"],
 }
@@ -48,8 +60,9 @@ def query_action(client: Client, frame) -> int:
     )
     data = json.loads(result.content)
     try:
-        return int(data["action"])
-    except (KeyError, ValueError, TypeError) as exc:
+        action_name = str(data["action"]).lower()
+        return NAME_TO_INDEX[action_name]
+    except (KeyError, ValueError, TypeError, LookupError) as exc:
         raise RuntimeError(f"Unexpected LM response: {result.content!r}") from exc
 
 
