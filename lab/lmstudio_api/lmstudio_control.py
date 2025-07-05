@@ -23,10 +23,11 @@ NAME_TO_INDEX = {name: idx for idx, name in enumerate(ACTION_NAMES)}
 
 SYSTEM_PROMPT = (
     "You control Undertale by sending actions from the following list: "
-    + ", ".join(ACTION_NAMES) + "."
+    + ", ".join(ACTION_NAMES)
+    + "."
 )
 USER_PROMPT = (
-    "Given the current frame, respond with JSON {\"action\": <action>} where"
+    'Given the current frame, respond with JSON {"action": <action>} where'
     " <action> is exactly one of: " + ", ".join(ACTION_NAMES) + "."
 )
 SCHEMA = {
@@ -45,27 +46,33 @@ def send_action(action_idx: int) -> None:
     sock.close()
 
 
-def query_action(client: Client, frame) -> int:
-    """Request the next action from LM Studio using structured output."""
+def query_action(
+    client: Client, frame, chat: lmstudio.Chat | None = None
+) -> tuple[int, lmstudio.Chat]:
+    """Request the next action from LM Studio and return the action index.
+
+    The provided ``chat`` context is updated in place so that subsequent calls
+    retain the conversation history.  A new chat is created if ``chat`` is ``None``.
+    """
 
     _, buffer = cv2.imencode(".png", frame)
     handle = client.prepare_image(buffer.tobytes(), name="frame.png")
 
-    chat = lmstudio.Chat()
-    chat.add_system_prompt(SYSTEM_PROMPT)
+    if chat is None:
+        chat = lmstudio.Chat()
+        chat.add_system_prompt(SYSTEM_PROMPT)
+
     chat.add_user_message(USER_PROMPT, images=[handle])
 
     model = client.llm.model()
-    result = model.respond(
-        chat,
-        #response_format={"type": "json_object", "schema": SCHEMA},
-    )
+    result = model.respond(chat)
     content = result.content
+    chat.add_assistant_response(content)
 
     data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
-        return NAME_TO_INDEX[action_name]
+        return NAME_TO_INDEX[action_name], chat
     except (KeyError, ValueError, TypeError, LookupError) as exc:
         raise RuntimeError(f"Unexpected LM response: {content!r}") from exc
 
@@ -73,8 +80,10 @@ def query_action(client: Client, frame) -> int:
 def main() -> None:
     obs = LocalObs(source=1)
     client = Client()
+    chat = lmstudio.Chat()
+    chat.add_system_prompt(SYSTEM_PROMPT)
     frame = obs.get_frame_224()
-    action = query_action(client, frame)
+    action, chat = query_action(client, frame, chat)
     print(f"Action: {ACTION_NAMES[action]}")
     send_action(action)
     obs.close()

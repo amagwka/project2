@@ -6,7 +6,9 @@ LM Studio Python SDK. The script captures frames from OBS Studio
 for the next action index.
 
 ## Files
-- `lmstudio_control.py` – captures one frame, sends a prompt to LM Studio and
-  forwards the predicted action to the UDP action server.
+ - `lmstudio_control.py` – captures a frame and queries LM Studio for the next
+   action. The helper preserves conversation history so repeated calls can
+   provide additional context to the model before sending the predicted action
+   to the UDP server.
 
 LM Studio must be running locally for the script to connect.
