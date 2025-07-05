@@ -38,7 +38,8 @@ def query_action(client: Client, frame) -> int:
     _, buffer = cv2.imencode(".png", frame)
     chat = Chat()
     chat.add_system_prompt(SYSTEM_PROMPT)
-    chat.add_user_message(USER_PROMPT, images=[buffer.tobytes()])
+    handle = client.prepare_image(buffer.tobytes(), name="frame.png")
+    chat.add_user_message(USER_PROMPT, images=[handle])
 
     model = client.llm.model()
     result = model.respond(
