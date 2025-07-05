@@ -167,7 +167,7 @@ class SocketAppEnv(gym.Env):
             self.step_count % self.wm_interval_steps == 0 and
             perf_counter() - self._last_wm_time >= self.wm_time_interval
         ):
-            context = np.stack(self.obs_history, axis=0).astype(np.float32)
+            context = np.stack(self.obs_history, axis=0).astype(np.float32) * 10.0
             try:
                 self.wm_socket.settimeout(0.2)
                 self.wm_socket.sendto(context.tobytes(), self.wm_addr)
