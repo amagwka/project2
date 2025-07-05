@@ -3,7 +3,6 @@ import json
 import cv2
 from utils.observations import LocalObs
 from lmstudio import Client
-from lmstudio.history import Chat
 
 # Address of the combined action server
 ACTION_ADDR = ("127.0.0.1", 5005)
@@ -60,6 +59,7 @@ def query_action(client: Client, frame) -> int:
         response_format={"type": "json_object", "schema": SCHEMA},
     )
     content = result.content
+
     data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
