@@ -67,11 +67,11 @@ def query_action(
     model = client.llm.model()
     result = model.respond(chat)
     content = result.content
-    #print(content)
+    print(content)
     data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
-        return NAME_TO_INDEX[action_name]
+        return NAME_TO_INDEX[action_name], chat
     except (KeyError, ValueError, TypeError, LookupError) as exc:
         raise RuntimeError(f"Unexpected LM response: {content!r}") from exc
 
@@ -82,10 +82,11 @@ def main() -> None:
     client = Client()
     chat = lmstudio.Chat()
     chat.add_system_prompt(SYSTEM_PROMPT)
-    frame = obs.get_frame_224()
-    action, chat = query_action(client, frame, chat)
-    print(f"Action: {ACTION_NAMES[action]}")
-    send_action(action)
+    for i in range(100):
+        frame = obs.get_frame_224()
+        action, chat = query_action(client, frame, chat)
+        print(f"Action: {ACTION_NAMES[action]}")
+        send_action(action)
     obs.close()
     client.close()
 
