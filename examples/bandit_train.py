@@ -36,7 +36,7 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
-    buffer = RolloutBufferNoDone(512, state_dim, action_dim, device)
+    buffer = RolloutBufferNoDone(256, state_dim, action_dim, device)
 
     class Actor(nn.Module):
         def __init__(self):

@@ -23,14 +23,14 @@ class WorldModelConfig:
     port: int = 5007
     model_path: str = "lab/scripts/mlp_world_model.pt"
     model_type: str = "mlp"  # "mlp", "gru" or "lstm"
-    interval_steps: int = 5
+    interval_steps: int = 15
     time_interval: float = 1.0
 
 
 @dataclass
 class EnvConfig:
     """Default parameters for ``SocketAppEnv``."""
-    max_steps: int = 1000
+    max_steps: int = 1e10
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     action_dim: int = 7
     state_dim: int = 384
@@ -54,8 +54,8 @@ class TrainingConfig:
     action_dim: int = 7
     seq_len: int = 70
     rollout_len: int = 512
-    update_every: int = 512
-    learning_rate: float = 3e-4
+    update_every: int = 256
+    learning_rate: float = 1e-4
     clip_eps: float = 0.2
 
 

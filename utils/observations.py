@@ -32,7 +32,11 @@ class LocalObs:
         frame = self.read_frame()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return cv2.resize(frame, (224, 224))
-    
+
+    def get_frame_original(self) -> np.ndarray:
+        frame = self.read_frame()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        return cv2.resize(frame, (225, 300))
 
     def get_embedding(self) -> np.ndarray:
         # 1) Read + color + resize (all CPU & OpenCV)

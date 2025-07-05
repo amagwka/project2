@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.distributions as td
 
 DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
-CLIP_EPS      = 0.2
+CLIP_EPS      = 0.1
 
 def ppo_update(actor, critic, optim_actor, optim_critic,
                buf_states, buf_actions, buf_logp_old, buf_returns, buf_adv):

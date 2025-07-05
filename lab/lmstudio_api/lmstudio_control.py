@@ -1,6 +1,8 @@
 import socket
 import json
 import cv2
+import lmstudio
+
 from utils.observations import LocalObs
 from lmstudio import Client
 
@@ -49,14 +51,14 @@ def query_action(client: Client, frame) -> int:
     _, buffer = cv2.imencode(".png", frame)
     handle = client.prepare_image(buffer.tobytes(), name="frame.png")
 
-    chat = Chat()
+    chat = lmstudio.Chat()
     chat.add_system_prompt(SYSTEM_PROMPT)
     chat.add_user_message(USER_PROMPT, images=[handle])
 
     model = client.llm.model()
     result = model.respond(
         chat,
-        response_format={"type": "json_object", "schema": SCHEMA},
+        #response_format={"type": "json_object", "schema": SCHEMA},
     )
     content = result.content
 
@@ -73,6 +75,7 @@ def main() -> None:
     client = Client()
     frame = obs.get_frame_224()
     action = query_action(client, frame)
+    print(f"Action: {ACTION_NAMES[action]}")
     send_action(action)
     obs.close()
     client.close()
