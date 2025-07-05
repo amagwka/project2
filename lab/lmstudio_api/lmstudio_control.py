@@ -1,4 +1,5 @@
 import socket
+import json
 import cv2
 from utils.observations import LocalObs
 from lmstudio import Client
@@ -6,6 +7,22 @@ from lmstudio.history import Chat
 
 # Address of the combined action server
 ACTION_ADDR = ("127.0.0.1", 5005)
+
+# Prompts and JSON schema for structured output
+SYSTEM_PROMPT = (
+    "You control Undertale by sending numeric action indices from 0 to 6."
+)
+USER_PROMPT = (
+    "Given the current frame, respond with JSON {\"action\": <index>} where"
+    " <index> is the next action to take."
+)
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "integer", "minimum": 0, "maximum": 6},
+    },
+    "required": ["action"],
+}
 
 
 def send_action(action_idx: int) -> None:
@@ -16,21 +33,23 @@ def send_action(action_idx: int) -> None:
 
 
 def query_action(client: Client, frame) -> int:
-    """Request the next action from LM Studio.
+    """Request the next action from LM Studio using structured output."""
 
-    The LM is expected to reply with a plain integer in the range 0‑6.
-    """
-    prompt = "Given the current Undertale frame, respond with the next action index (0-6)."
     _, buffer = cv2.imencode(".png", frame)
     chat = Chat()
-    chat.add_user_message(prompt, images=[buffer.tobytes()])
+    chat.add_system_prompt(SYSTEM_PROMPT)
+    chat.add_user_message(USER_PROMPT, images=[buffer.tobytes()])
+
     model = client.llm.model()
-    result = model.respond(chat, response_format={"type": "text"})
-    text = result.content.strip()
+    result = model.respond(
+        chat,
+        response_format={"type": "json_object", "schema": SCHEMA},
+    )
+    data = json.loads(result.content)
     try:
-        return int(text)
-    except ValueError:
-        raise RuntimeError(f"Unexpected LM response: {text!r}")
+        return int(data["action"])
+    except (KeyError, ValueError, TypeError) as exc:
+        raise RuntimeError(f"Unexpected LM response: {result.content!r}") from exc
 
 
 def main() -> None:
