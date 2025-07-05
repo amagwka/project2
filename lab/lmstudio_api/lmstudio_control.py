@@ -48,9 +48,10 @@ def query_action(client: Client, frame) -> int:
     """Request the next action from LM Studio using structured output."""
 
     _, buffer = cv2.imencode(".png", frame)
+    handle = client.prepare_image(buffer.tobytes(), name="frame.png")
+
     chat = Chat()
     chat.add_system_prompt(SYSTEM_PROMPT)
-    handle = client.prepare_image(buffer.tobytes(), name="frame.png")
     chat.add_user_message(USER_PROMPT, images=[handle])
 
     model = client.llm.model()
@@ -58,12 +59,13 @@ def query_action(client: Client, frame) -> int:
         chat,
         response_format={"type": "json_object", "schema": SCHEMA},
     )
-    data = json.loads(result.content)
+    content = result.content
+    data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
         return NAME_TO_INDEX[action_name]
     except (KeyError, ValueError, TypeError, LookupError) as exc:
-        raise RuntimeError(f"Unexpected LM response: {result.content!r}") from exc
+        raise RuntimeError(f"Unexpected LM response: {content!r}") from exc
 
 
 def main() -> None:
