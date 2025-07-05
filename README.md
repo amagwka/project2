@@ -21,7 +21,11 @@ This repository implements a reinforcement learning setup that interacts with an
 * Extrinsic and intrinsic rewards are summed for each step.
 
 ## Action and Reward Server
-`servers/action_server.py` exposes `start_combined_udp_server` which wraps `ExternalRewardTracker` from `servers/reward_server.py` and processes both actions and reward queries on the same UDP port. Run this module to start the server.
+`servers/action_server.py` exposes `start_combined_udp_server` which wraps
+`ExternalRewardTracker` from `servers/reward_server.py` and processes both
+actions and reward queries on the same UDP port. The server now ignores
+`ConnectionResetError` events so occasional UDP connection resets on Windows do
+not terminate the process. Run this module to start the server.
 
 ## Neural Modules and PPO
 * `models/nn.py` contains LSTM based actor and critic networks.

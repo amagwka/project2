@@ -2,10 +2,16 @@ import socket
 import time
 from pynput.keyboard import Controller, Key
 from servers.reward_server import ExternalRewardTracker
-from servers.constants import ARROW_DELAY, WAIT_DELAY, NON_ARROW_DELAY, ARROW_IDX, WAIT_IDX
+from servers.constants import (
+    ARROW_DELAY,
+    WAIT_DELAY,
+    NON_ARROW_DELAY,
+    ARROW_IDX,
+    WAIT_IDX,
+)
 
 # Keyboard setup
-ACTION_KEYS = [Key.up, Key.down, Key.left, Key.right, 'z', 'x', None]
+ACTION_KEYS = [Key.up, Key.down, Key.left, Key.right, "z", "x", None]
 keyboard = Controller()
 
 
@@ -26,15 +32,20 @@ def send_action(action_idx):
     except IndexError:
         print(f"[Error] Invalid action index: {action_idx}")
 
+
 # Unified UDP server
-def start_combined_udp_server(tracker, host='0.0.0.0', port=5005):
+def start_combined_udp_server(tracker, host="0.0.0.0", port=5005):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, port))
     print(f"[Combined UDP Server] Listening on {host}:{port}")
 
     try:
         while True:
-            data, addr = sock.recvfrom(1024)
+            try:
+                data, addr = sock.recvfrom(1024)
+            except ConnectionResetError:
+                # Ignore spurious resets on Windows and continue listening
+                continue
             msg = data.decode().strip().upper()
 
             if msg == "GET":
@@ -50,7 +61,10 @@ def start_combined_udp_server(tracker, host='0.0.0.0', port=5005):
                     reply = b"DONE"
                 except ValueError:
                     reply = b"ERR"
-            sock.sendto(reply, addr)
+            try:
+                sock.sendto(reply, addr)
+            except ConnectionResetError:
+                continue
     except KeyboardInterrupt:
         print("\n[Server] Shutdown.")
     finally:
