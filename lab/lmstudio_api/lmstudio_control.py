@@ -4,7 +4,7 @@ import cv2
 import lmstudio
 
 from utils.observations import LocalObs
-from lmstudio import Client
+from lmstudio import Client, LlmLoadModelConfig, LlmPredictionConfig
 
 # Address of the combined action server
 ACTION_ADDR = ("127.0.0.1", 5005)
@@ -64,11 +64,17 @@ def query_action(
 
     chat.add_user_message(USER_PROMPT, images=[handle])
 
-    model = client.llm.model()
-    result = model.respond(chat)
+    model = client.llm.model(
+        config=LlmLoadModelConfig(context_length=4096)
+    )
+    result = model.respond(
+        chat,
+        response_format={"type": "json_object", "schema": SCHEMA},
+        config=LlmPredictionConfig(context_overflow_policy="rollingWindow"),
+    )
     content = result.content
     print(content)
-    data = json.loads(content)
+    data = result.parsed if isinstance(result.parsed, dict) else json.loads(content)
     try:
         action_name = str(data["action"]).lower()
         return NAME_TO_INDEX[action_name], chat
