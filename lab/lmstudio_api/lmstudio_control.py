@@ -49,16 +49,17 @@ def query_action(client: Client, frame) -> int:
     _, buffer = cv2.imencode(".png", frame)
     handle = client.prepare_image(buffer.tobytes(), name="frame.png")
 
-    params = {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": USER_PROMPT, "images": [handle]},
-        ],
-        "response_format": {"type": "json_object", "schema": SCHEMA},
-    }
+    chat = Chat()
+    chat.add_system_prompt(SYSTEM_PROMPT)
+    chat.add_user_message(USER_PROMPT, images=[handle])
 
-    response = client.llm.remote_call("chat", params)
-    content = response["choices"][0]["message"]["content"]
+    model = client.llm.model()
+    result = model.respond(
+        chat,
+        response_format={"type": "json_object", "schema": SCHEMA},
+    )
+    content = result.content
+
     data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
