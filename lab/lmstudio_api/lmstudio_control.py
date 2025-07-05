@@ -3,7 +3,6 @@ import json
 import cv2
 from utils.observations import LocalObs
 from lmstudio import Client
-from lmstudio.history import Chat
 
 # Address of the combined action server
 ACTION_ADDR = ("127.0.0.1", 5005)
@@ -48,22 +47,24 @@ def query_action(client: Client, frame) -> int:
     """Request the next action from LM Studio using structured output."""
 
     _, buffer = cv2.imencode(".png", frame)
-    chat = Chat()
-    chat.add_system_prompt(SYSTEM_PROMPT)
     handle = client.prepare_image(buffer.tobytes(), name="frame.png")
-    chat.add_user_message(USER_PROMPT, images=[handle])
 
-    model = client.llm.model()
-    result = model.respond(
-        chat,
-        response_format={"type": "json_object", "schema": SCHEMA},
-    )
-    data = json.loads(result.content)
+    params = {
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": USER_PROMPT, "images": [handle]},
+        ],
+        "response_format": {"type": "json_object", "schema": SCHEMA},
+    }
+
+    response = client.llm.remote_call("chat", params)
+    content = response["choices"][0]["message"]["content"]
+    data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
         return NAME_TO_INDEX[action_name]
     except (KeyError, ValueError, TypeError, LookupError) as exc:
-        raise RuntimeError(f"Unexpected LM response: {result.content!r}") from exc
+        raise RuntimeError(f"Unexpected LM response: {content!r}") from exc
 
 
 def main() -> None:
