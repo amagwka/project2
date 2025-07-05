@@ -17,7 +17,7 @@ ACTION_NAMES = [
     "right",
     "enter",
     "shift",
-    "wait",
+    #"wait",
 ]
 NAME_TO_INDEX = {name: idx for idx, name in enumerate(ACTION_NAMES)}
 
@@ -67,17 +67,17 @@ def query_action(
     model = client.llm.model()
     result = model.respond(chat)
     content = result.content
-    chat.add_assistant_response(content)
-
+    #print(content)
     data = json.loads(content)
     try:
         action_name = str(data["action"]).lower()
-        return NAME_TO_INDEX[action_name], chat
+        return NAME_TO_INDEX[action_name]
     except (KeyError, ValueError, TypeError, LookupError) as exc:
         raise RuntimeError(f"Unexpected LM response: {content!r}") from exc
 
 
 def main() -> None:
+    import time
     obs = LocalObs(source=1)
     client = Client()
     chat = lmstudio.Chat()
