@@ -72,6 +72,7 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
                 else:
                     inp = obs_seq.unsqueeze(0)
                 pred = model(inp).squeeze(0).cpu().numpy().astype(np.float32)
+            pred /= 10.0
             sock.sendto(pred.tobytes(), addr)
     except KeyboardInterrupt:
         print('\n[WorldModelServer] Shutdown.')

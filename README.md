@@ -48,6 +48,11 @@ packages pinned in `requirements.txt`.
    `lab/scripts/rnn_lstm.pt` which was trained with an LSTM of hidden size
    512 and 3 layers:
 
+   Note that observations produced by `LocalObs` are scaled down by a
+   factor of ten. The environment scales them back up before sending them to
+   the world model server, which in turn divides its predictions by ten
+   before replying.
+
    ```bash
    python servers/world_model_server.py
    ```
