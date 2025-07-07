@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 import torch
 import torch.nn as nn
 import torch.distributions as td
@@ -9,6 +15,7 @@ from utils.rollout import RolloutBufferNoDone, compute_gae
 
 
 def test_bandit_env_ppo():
+    torch.manual_seed(0)
     env = MultiArmedBanditEnv([0.1, 0.9])
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n

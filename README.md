@@ -10,6 +10,18 @@ configuration object and pass its sections to the relevant modules.
 
 `SocketAppEnv` in `envs/socket_env.py` provides an OpenAI Gym environment. By default it communicates with two separate UDP ports: one for sending actions and one for requesting rewards. When the environment is created with `combined_server=True`, both actions and reward requests are sent to the same address. This mode is intended for use with the `start_combined_udp_server` helper defined in `servers/action_server.py`.
 
+Example usage with the new helper classes:
+
+```python
+from utils.udp_client import UdpClient
+from utils.observation_encoder import ObservationEncoder
+from envs.socket_env import SocketAppEnv
+
+udp = UdpClient(("127.0.0.1", 5005), ("127.0.0.1", 5006))
+encoder = ObservationEncoder(device="cuda")
+env = SocketAppEnv(udp_client=udp, obs_encoder=encoder, start_servers=False)
+```
+
 # Undertale RL via UDP
 
 This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward`.
