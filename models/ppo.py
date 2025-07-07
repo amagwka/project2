@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 import torch.distributions as td
 
-DEVICE        = "cuda" if torch.cuda.is_available() else "cpu"
 CLIP_EPS      = 0.1
 
 def ppo_update(actor, critic, optim_actor, optim_critic,
@@ -10,6 +9,7 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
     """Perform a PPO update and return training metrics."""
     batch = len(buf_states)
     idx = torch.randperm(batch)
+    device = next(actor.parameters()).device
 
     metrics = {
         "actor_loss": 0.0,
@@ -23,11 +23,11 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
             sl = idx[start:start+256]
 
             # Directly use the state sequences from the buffer
-            state_seq = buf_states[sl].to(DEVICE)  # shape: [batch_size, seq_len, state_dim]
-            actions    = buf_actions[sl].to(DEVICE)
-            logp_old   = buf_logp_old[sl].to(DEVICE)
-            returns    = buf_returns[sl].to(DEVICE)
-            adv        = buf_adv[sl].to(DEVICE)
+            state_seq = buf_states[sl].to(device)  # shape: [batch_size, seq_len, state_dim]
+            actions    = buf_actions[sl].to(device)
+            logp_old   = buf_logp_old[sl].to(device)
+            returns    = buf_returns[sl].to(device)
+            adv        = buf_adv[sl].to(device)
 
             # Actor forward pass
             logits = actor(state_seq)  # [batch_size, action_dim]
