@@ -2,11 +2,31 @@ import torch
 import torch.nn.functional as F
 import torch.distributions as td
 
-CLIP_EPS      = 0.1
+CLIP_EPS = 0.1
 
-def ppo_update(actor, critic, optim_actor, optim_critic,
-               buf_states, buf_actions, buf_logp_old, buf_returns, buf_adv):
-    """Perform a PPO update and return training metrics."""
+
+def ppo_update(
+    actor,
+    critic,
+    optim_actor,
+    optim_critic,
+    buf_states,
+    buf_actions,
+    buf_logp_old,
+    buf_returns,
+    buf_adv,
+    num_epochs: int = 1,
+    batch_size: int = 256,
+):
+    """Perform a PPO update and return training metrics.
+
+    Parameters
+    ----------
+    num_epochs : int, optional
+        Number of passes over the data per update. Defaults to ``1``.
+    batch_size : int, optional
+        Mini-batch size used inside each epoch. Defaults to ``256``.
+    """
     batch = len(buf_states)
     idx = torch.randperm(batch)
     device = next(actor.parameters()).device
@@ -18,16 +38,18 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
         "num_batches": 0,
     }
 
-    for _ in range(1):  # epochs
-        for start in range(0, batch, 256):
-            sl = idx[start:start+256]
+    for _ in range(num_epochs):
+        for start in range(0, batch, batch_size):
+            sl = idx[start : start + batch_size]
 
             # Directly use the state sequences from the buffer
-            state_seq = buf_states[sl].to(device)  # shape: [batch_size, seq_len, state_dim]
-            actions    = buf_actions[sl].to(device)
-            logp_old   = buf_logp_old[sl].to(device)
-            returns    = buf_returns[sl].to(device)
-            adv        = buf_adv[sl].to(device)
+            state_seq = buf_states[sl].to(
+                device
+            )  # shape: [batch_size, seq_len, state_dim]
+            actions = buf_actions[sl].to(device)
+            logp_old = buf_logp_old[sl].to(device)
+            returns = buf_returns[sl].to(device)
+            adv = buf_adv[sl].to(device)
 
             # Actor forward pass
             logits = actor(state_seq)  # [batch_size, action_dim]
@@ -36,7 +58,7 @@ def ppo_update(actor, critic, optim_actor, optim_critic,
 
             ratio = (logp - logp_old).exp()
             surr1 = ratio * adv
-            surr2 = torch.clamp(ratio, 1-CLIP_EPS, 1+CLIP_EPS) * adv
+            surr2 = torch.clamp(ratio, 1 - CLIP_EPS, 1 + CLIP_EPS) * adv
             actor_loss = -torch.min(surr1, surr2).mean()
             approx_kl = (logp_old - logp).mean()
 

@@ -14,18 +14,30 @@ from utils import logger
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bandit PPO trainer")
-    parser.add_argument("--sb3", action="store_true",
-                        help="use stable-baselines3 PPO")
-    parser.add_argument("--timesteps", type=int, default=20000,
-                        help="training timesteps for sb3")
+    parser.add_argument("--sb3", action="store_true", help="use stable-baselines3 PPO")
+    parser.add_argument(
+        "--timesteps", type=int, default=20000, help="training timesteps for sb3"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=256, help="PPO mini-batch size"
+    )
+    parser.add_argument(
+        "--num-epochs", type=int, default=1, help="number of epochs per PPO update"
+    )
     args = parser.parse_args()
 
     env = MultiArmedBanditEnv([0.43, 0.57])
 
     if args.sb3:
         vec_env = make_vec_env(lambda: MultiArmedBanditEnv([0.43, 0.57]), n_envs=1)
-        model = SB3PPO("MlpPolicy", vec_env, n_steps=256, batch_size=256,
-                       learning_rate=1e-4, verbose=1)
+        model = SB3PPO(
+            "MlpPolicy",
+            vec_env,
+            n_steps=256,
+            batch_size=256,
+            learning_rate=1e-4,
+            verbose=1,
+        )
         model.learn(total_timesteps=args.timesteps)
         obs = vec_env.reset()
         action, _ = model.predict(obs, deterministic=True)
@@ -83,14 +95,28 @@ def main() -> None:
         if buffer.ready():
             s_batch, a_batch, r_batch, v_batch, lp_batch = buffer.get()
             returns, adv = compute_gae(r_batch, v_batch)
-            metrics = ppo_update(actor, critic, opt_actor, opt_critic,
-                                 s_batch, a_batch, lp_batch, returns, adv)
-            logger.log_dict({
-                "Loss/Actor": metrics.get("actor_loss", 0.0),
-                "Loss/Critic": metrics.get("critic_loss", 0.0),
-                "KLDiv": metrics.get("kl_div", 0.0),
-            }, step_count)
-            #print(f"[PPO Update] Step {step_count}")
+            metrics = ppo_update(
+                actor,
+                critic,
+                opt_actor,
+                opt_critic,
+                s_batch,
+                a_batch,
+                lp_batch,
+                returns,
+                adv,
+                num_epochs=args.num_epochs,
+                batch_size=args.batch_size,
+            )
+            logger.log_dict(
+                {
+                    "Loss/Actor": metrics.get("actor_loss", 0.0),
+                    "Loss/Critic": metrics.get("critic_loss", 0.0),
+                    "KLDiv": metrics.get("kl_div", 0.0),
+                },
+                step_count,
+            )
+            # print(f"[PPO Update] Step {step_count}")
 
         step_count += 1
         logger.log_scalar("Reward/Total", reward, step_count)
