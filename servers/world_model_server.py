@@ -5,6 +5,12 @@ from models.world_model import LSTMWorldModel
 from lab.rnn_baseline import RNNPredictor
 from lab.mlp_world_model import MLPWorldModel
 
+MODEL_TYPES = {
+    "lstm": LSTMWorldModel,
+    "gru": RNNPredictor,
+    "mlp": MLPWorldModel,
+}
+
 
 DEFAULT_MODEL_PATH = "lab/scripts/rnn_lstm.pt"
 
@@ -15,12 +21,13 @@ def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str
                                  model_type: str = 'lstm'):
     """Start a UDP server that predicts the next observation embedding."""
     model_type = model_type.lower()
-    if model_type == 'mlp':
-        model = MLPWorldModel(input_dim=obs_dim,num_layers=3).to(device)
-    elif model_type == 'gru':
-        model = RNNPredictor(input_dim=obs_dim, rnn_type='GRU').to(device)
+    model_cls = MODEL_TYPES.get(model_type, LSTMWorldModel)
+    if model_type == 'gru':
+        model = model_cls(input_dim=obs_dim, rnn_type='GRU').to(device)
+    elif model_type == 'mlp':
+        model = model_cls(input_dim=obs_dim, num_layers=3).to(device)
     else:
-        model = LSTMWorldModel(obs_dim=obs_dim).to(device)
+        model = model_cls(obs_dim=obs_dim).to(device)
     if model_path:
         try:
             state = torch.load(model_path, map_location=device)
