@@ -1,9 +1,9 @@
-import socket
 import numpy as np
 import torch
 from models.world_model import LSTMWorldModel
 from lab.rnn_baseline import RNNPredictor
 from lab.mlp_world_model import MLPWorldModel
+from servers.base import UdpServer
 
 MODEL_TYPES = {
     "lstm": LSTMWorldModel,
@@ -15,76 +15,90 @@ MODEL_TYPES = {
 DEFAULT_MODEL_PATH = "lab/scripts/rnn_lstm.pt"
 
 
-def start_udp_world_model_server(model_path: str = DEFAULT_MODEL_PATH, host: str = '0.0.0.0',
-                                 port: int = 5007, obs_dim: int = 384,
-                                 seq_len: int = 30, device: str = 'cuda',
-                                 model_type: str = 'lstm'):
-    """Start a UDP server that predicts the next observation embedding."""
-    model_type = model_type.lower()
-    model_cls = MODEL_TYPES.get(model_type, LSTMWorldModel)
-    if model_type == 'gru':
-        model = model_cls(input_dim=obs_dim, rnn_type='GRU').to(device)
-    elif model_type == 'mlp':
-        model = model_cls(input_dim=obs_dim, num_layers=3).to(device)
-    else:
-        model = model_cls(obs_dim=obs_dim).to(device)
-    if model_path:
-        try:
-            state = torch.load(model_path, map_location=device)
+class WorldModelServer(UdpServer):
+    """UDP server serving predictions from a trained world model."""
+
+    def __init__(
+        self,
+        model_path: str = DEFAULT_MODEL_PATH,
+        host: str = "0.0.0.0",
+        port: int = 5007,
+        obs_dim: int = 384,
+        seq_len: int = 30,
+        device: str = "cuda",
+        model_type: str = "lstm",
+    ):
+        self.model_type = model_type.lower()
+        model_cls = MODEL_TYPES.get(self.model_type, LSTMWorldModel)
+        if self.model_type == "gru":
+            self.model = model_cls(input_dim=obs_dim, rnn_type="GRU").to(device)
+        elif self.model_type == "mlp":
+            self.model = model_cls(input_dim=obs_dim, num_layers=3).to(device)
+        else:
+            self.model = model_cls(obs_dim=obs_dim).to(device)
+        if model_path:
             try:
-                model.load_state_dict(state)
-            except RuntimeError:
-                renamed = {}
-                for k, v in state.items():
-                    if k.startswith("lstm."):
-                        renamed["rnn." + k[5:]] = v
-                    else:
-                        renamed[k] = v
-                model.load_state_dict(renamed)
+                state = torch.load(model_path, map_location=device)
+                try:
+                    self.model.load_state_dict(state)
+                except RuntimeError:
+                    renamed = {}
+                    for k, v in state.items():
+                        if k.startswith("lstm."):
+                            renamed["rnn." + k[5:]] = v
+                        else:
+                            renamed[k] = v
+                    self.model.load_state_dict(renamed)
 
-            print(f"[WorldModelServer] Loaded model from {model_path}")
-        except Exception as e:
-            print(f"[WorldModelServer] Failed to load {model_path}: {e}")
-    model.eval()
+                print(f"[WorldModelServer] Loaded model from {model_path}")
+            except Exception as e:
+                print(f"[WorldModelServer] Failed to load {model_path}: {e}")
+        self.model.eval()
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Allow quick rebinding in case a previous instance recently exited
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        sock.bind((host, port))
-    except OSError as e:
-        print(f"[WorldModelServer] Failed to bind udp://{host}:{port}: {e}")
-        print("[WorldModelServer] Falling back to an ephemeral port.")
-        sock.bind((host, 0))
-        port = sock.getsockname()[1]
-    print(f"[WorldModelServer] Listening on udp://{host}:{port}")
+        self.obs_dim = obs_dim
+        self.seq_len = seq_len
+        self.device = device
+        super().__init__(host, port)
 
-    try:
-        while True:
-            data, addr = sock.recvfrom(65535)
-            if not data:
-                continue
-            if data == b'PING':
-                sock.sendto(b'PONG', addr)
-                continue
+    def handle(self, data: bytes, addr):
+        if data == b"PING":
+            return b"PONG"
 
-            arr = np.frombuffer(data, dtype=np.float32).copy()
-            if arr.size != seq_len * obs_dim:
-                sock.sendto(b'ERR', addr)
-                continue
-            obs_seq = torch.from_numpy(arr.reshape(seq_len, obs_dim)).to(device)
-            with torch.no_grad():
-                if model_type == 'mlp':
-                    inp = obs_seq[-1].unsqueeze(0)
-                else:
-                    inp = obs_seq.unsqueeze(0)
-                pred = model(inp).squeeze(0).cpu().numpy().astype(np.float32)
-            pred /= 10.0
-            sock.sendto(pred.tobytes(), addr)
-    except KeyboardInterrupt:
-        print('\n[WorldModelServer] Shutdown.')
-    finally:
-        sock.close()
+        arr = np.frombuffer(data, dtype=np.float32).copy()
+        if arr.size != self.seq_len * self.obs_dim:
+            return b"ERR"
+        obs_seq = torch.from_numpy(arr.reshape(self.seq_len, self.obs_dim)).to(self.device)
+        with torch.no_grad():
+            if self.model_type == "mlp":
+                inp = obs_seq[-1].unsqueeze(0)
+            else:
+                inp = obs_seq.unsqueeze(0)
+            pred = self.model(inp).squeeze(0).cpu().numpy().astype(np.float32)
+        pred /= 10.0
+        return pred.tobytes()
+
+
+def start_udp_world_model_server(
+    model_path: str = DEFAULT_MODEL_PATH,
+    host: str = "0.0.0.0",
+    port: int = 5007,
+    obs_dim: int = 384,
+    seq_len: int = 30,
+    device: str = "cuda",
+    model_type: str = "lstm",
+):
+    """Helper function launching ``WorldModelServer``."""
+
+    server = WorldModelServer(
+        model_path=model_path,
+        host=host,
+        port=port,
+        obs_dim=obs_dim,
+        seq_len=seq_len,
+        device=device,
+        model_type=model_type,
+    )
+    server.serve()
 
 
 if __name__ == '__main__':

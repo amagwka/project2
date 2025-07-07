@@ -95,21 +95,29 @@ class ExternalRewardTracker(RewardTracker):
         self.pm.close_process()
 
 
-def start_udp_reward_server(tracker, host="0.0.0.0", port=5006):
-    """Start a UDP server that replies to GET and RESET commands."""
+class RewardServer(UdpServer):
+    """UDP server exposing the reward tracker."""
 
-    def handler(msg: str, addr):
-        cmd = msg.strip().upper()
+    def __init__(self, tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5006):
+        super().__init__(host, port, buffer_size=64)
+        self.tracker = tracker
+
+    def handle(self, data: bytes, addr):
+        cmd = data.decode().strip().upper()
         if cmd == "GET":
-            r = tracker.compute_reward()
-            return f"{r:.6f}".encode()
+            r = self.tracker.compute_reward()
+            return f"{r:.6f}"
         if cmd == "RESET":
-            tracker.reset()
+            self.tracker.reset()
             return b"OK"
         return b"ERR"
 
-    server = UdpServer(host, port, buffer_size=64)
-    server.serve_forever(handler, cleanup=tracker.close)
+
+def start_udp_reward_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5006):
+    """Convenience helper for ``RewardServer``."""
+
+    server = RewardServer(tracker, host=host, port=port)
+    server.serve(cleanup=tracker.close)
 
 
 if __name__ == "__main__":

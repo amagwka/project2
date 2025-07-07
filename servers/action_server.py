@@ -35,18 +35,21 @@ def send_action(action_idx):
         print(f"[Error] Invalid action index: {action_idx}")
 
 
-# Unified UDP server
+class ActionRewardServer(UdpServer):
+    """UDP server handling both actions and reward queries."""
 
-def start_combined_udp_server(tracker, host="0.0.0.0", port=5005):
-    """Start a UDP server processing actions and reward commands."""
+    def __init__(self, tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5005):
+        super().__init__(host, port, buffer_size=1024)
+        self.tracker = tracker
 
-    def handler(msg: str, addr):
-        m = msg.strip().upper()
+    # --------------------------------------------------------------
+    def handle(self, data: bytes, addr):
+        m = data.decode().strip().upper()
         if m == "GET":
-            r = tracker.compute_reward()
-            return f"{r:.6f}".encode()
+            r = self.tracker.compute_reward()
+            return f"{r:.6f}"
         if m == "RESET":
-            tracker.reset()
+            self.tracker.reset()
             return b"OK"
         try:
             action_idx = int(m)
@@ -55,8 +58,12 @@ def start_combined_udp_server(tracker, host="0.0.0.0", port=5005):
         except ValueError:
             return b"ERR"
 
-    server = UdpServer(host, port, buffer_size=1024)
-    server.serve_forever(handler, cleanup=tracker.close)
+
+def start_combined_udp_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5005):
+    """Convenience helper starting ``ActionRewardServer``."""
+
+    server = ActionRewardServer(tracker, host=host, port=port)
+    server.serve(cleanup=tracker.close)
 
 
 if __name__ == "__main__":
