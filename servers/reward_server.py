@@ -7,8 +7,10 @@ from pymem.exception import MemoryReadError
 
 from servers.base import UdpServer
 
+from servers.tracker import RewardTracker
 
-class ExternalRewardTracker:
+
+class ExternalRewardTracker(RewardTracker):
     def __init__(self, process_id=None, reward_config=None):
         # Auto-find Undertale.exe if no PID provided
         if process_id is None:
