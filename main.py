@@ -11,7 +11,7 @@ from pynput import keyboard
 from utils import logger
 from config import get_config
 
-from envs.socket_env import SocketAppEnv
+from envs.socket_env import SocketAppEnv, create_socket_env
 from models.nn import Actor, Q_Critic
 from utils.rollout import RolloutBufferNoDone, compute_gae
 from models.ppo import ppo_update
@@ -49,26 +49,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.sb3:
-        env_fn = lambda: SocketAppEnv(
-            cfg.env.max_steps,
-            device=cfg.env.device,
-            action_dim=cfg.env.action_dim,
-            state_dim=cfg.env.state_dim,
-            action_host=cfg.env.action_host,
-            action_port=cfg.env.action_port,
-            reward_host=cfg.env.reward_host,
-            reward_port=cfg.env.reward_port,
-            embedding_model=cfg.env.embedding_model,
-            combined_server=cfg.env.combined_server,
-            start_servers=cfg.env.start_servers,
-            enable_logging=cfg.env.enable_logging,
-            use_world_model=cfg.env.use_world_model,
-            world_model_host=cfg.env.world_model.host,
-            world_model_port=cfg.env.world_model.port,
-            world_model_path=cfg.env.world_model.model_path,
-            world_model_type=cfg.env.world_model.model_type,
-            world_model_interval=cfg.env.world_model.interval_steps,
-        )
+        env_fn = lambda: create_socket_env(cfg.env)
         vec_env = make_vec_env(env_fn, n_envs=1)
         model = SB3PPO(
             "MlpPolicy",
@@ -87,26 +68,7 @@ def main() -> None:
 
     Thread(target=hotkey_listener, daemon=True).start()
 
-    env = SocketAppEnv(
-        cfg.env.max_steps,
-        device=cfg.env.device,
-        action_dim=cfg.env.action_dim,
-        state_dim=cfg.env.state_dim,
-        action_host=cfg.env.action_host,
-        action_port=cfg.env.action_port,
-        reward_host=cfg.env.reward_host,
-        reward_port=cfg.env.reward_port,
-        embedding_model=cfg.env.embedding_model,
-        combined_server=cfg.env.combined_server,
-        start_servers=cfg.env.start_servers,
-        enable_logging=cfg.env.enable_logging,
-        use_world_model=cfg.env.use_world_model,
-        world_model_host=cfg.env.world_model.host,
-        world_model_port=cfg.env.world_model.port,
-        world_model_path=cfg.env.world_model.model_path,
-        world_model_type=cfg.env.world_model.model_type,
-        world_model_interval=cfg.env.world_model.interval_steps,
-    )
+    env = create_socket_env(cfg.env)
     obs, _ = env.reset()
 
     actor = Actor(state_dim=STATE_DIM, action_dim=ACTION_DIM).to(DEVICE)

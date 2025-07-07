@@ -23,6 +23,7 @@ from utils.intrinsic import E3BIntrinsicReward, BaseIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
+from dataclasses import asdict
 
 class SocketAppEnv(gym.Env):
     metadata = {"render_modes": []}
@@ -284,3 +285,20 @@ class SocketAppEnv(gym.Env):
             ]
             p = subprocess.Popen(cmd)
             self._server_processes.append(p)
+
+
+def create_socket_env(cfg: EnvConfig) -> SocketAppEnv:
+    """Instantiate ``SocketAppEnv`` from an ``EnvConfig``."""
+    env_kwargs = asdict(cfg)
+    wm = env_kwargs.pop("world_model")
+    env_kwargs.update({
+        "world_model_host": wm["host"],
+        "world_model_port": wm["port"],
+        "world_model_path": wm["model_path"],
+        "world_model_type": wm["model_type"],
+        "world_model_interval": wm["interval_steps"],
+    })
+    env_kwargs.pop("intrinsic_reward", None)
+    env_kwargs.pop("intrinsic_cls", None)
+    env_kwargs["config"] = cfg
+    return SocketAppEnv(**env_kwargs)
