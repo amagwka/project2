@@ -12,6 +12,12 @@ class LocalObs:
         self.mean = np.array([0.485, 0.456, 0.406])
         self.std = np.array([0.229, 0.224, 0.225])
         self.USE_GPU_PREPROCESS = True
+        if self.USE_GPU_PREPROCESS:
+            self.mean_t = torch.as_tensor(self.mean, device=self.device).view(1, 3, 1, 1)
+            self.std_t = torch.as_tensor(self.std, device=self.device).view(1, 3, 1, 1)
+        else:
+            self.mean_t = None
+            self.std_t = None
         self.video_capture = cv2.VideoCapture(source)
         if not self.video_capture.isOpened():
             logging.warning(f"Could not open video source {source}. Using dummy frames.")
@@ -50,9 +56,7 @@ class LocalObs:
         if self.USE_GPU_PREPROCESS:
             tensor = tensor.to(self.device, non_blocking=True)
             tensor = tensor.div(255.0)
-            mean = torch.as_tensor(self.mean, device=self.device).view(1,3,1,1)
-            std  = torch.as_tensor(self.std,  device=self.device).view(1,3,1,1)
-            tensor = tensor.sub(mean).div(std)
+            tensor = tensor.sub(self.mean_t).div(self.std_t)
         else:
             # Original CPU-based normalization
             frame = frame.astype(np.float32) / 255.0
