@@ -43,7 +43,7 @@ class SocketAppEnv(gym.Env):
         world_model_path="lab/scripts/mlp_world_model.pt",
         world_model_type="mlp",
         world_model_interval=5,
-        world_model_time=1.0,
+        world_model_time=1.0,  # unused
         config: Optional[EnvConfig] = None,
     ):
 
@@ -66,7 +66,7 @@ class SocketAppEnv(gym.Env):
             world_model_path = config.world_model.model_path
             world_model_type = config.world_model.model_type
             world_model_interval = config.world_model.interval_steps
-            world_model_time = config.world_model.time_interval
+            world_model_time = config.world_model.time_interval  # unused
 
         super().__init__()
         self.max_steps = max_steps
@@ -92,11 +92,12 @@ class SocketAppEnv(gym.Env):
         self.world_model_path = world_model_path
         self.world_model_type = world_model_type
         self.wm_interval_steps = int(max(1, world_model_interval))
-        self.wm_time_interval = float(world_model_time)
+        # ``world_model_time`` was previously used to throttle requests based on
+        # wall clock.  The reward from the world model is now triggered purely
+        # on step intervals to avoid irregular spacing in the logged values.
         self._server_processes = []
         self._logger = None
         self._last_action_time = perf_counter()
-        self._last_wm_time = perf_counter()
 
         self.action_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if combined_server:
@@ -134,7 +135,6 @@ class SocketAppEnv(gym.Env):
         self._send_reset()
         self.intrinsic.reset()
         self.obs_history.clear()
-        self._last_wm_time = perf_counter()
         emb_np = self.obs_encoder.get_embedding()
         return emb_np.astype(np.float32), {}
 
@@ -164,8 +164,7 @@ class SocketAppEnv(gym.Env):
         if (
             self.use_world_model and
             len(self.obs_history) == 30 and
-            self.step_count % self.wm_interval_steps == 0 and
-            perf_counter() - self._last_wm_time >= self.wm_time_interval
+            self.step_count % self.wm_interval_steps == 0
         ):
             context = np.stack(self.obs_history, axis=0).astype(np.float32) * 10.0
             try:
@@ -181,7 +180,6 @@ class SocketAppEnv(gym.Env):
                 model_bonus = 99.99
             except Exception:
                 model_bonus = 99.99
-            self._last_wm_time = perf_counter()
 
         reward = extrinsic + intrinsic + model_bonus
 
