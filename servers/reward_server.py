@@ -6,8 +6,10 @@ import psutil
 from pymem import Pymem
 from pymem.exception import MemoryReadError
 
+from servers.tracker import RewardTracker
 
-class ExternalRewardTracker:
+
+class ExternalRewardTracker(RewardTracker):
     def __init__(self, process_id=None, reward_config=None):
         # Auto-find Undertale.exe if no PID provided
         if process_id is None:
@@ -92,7 +94,7 @@ class ExternalRewardTracker:
         self.pm.close_process()
 
 
-def start_udp_reward_server(tracker, host="0.0.0.0", port=5006):
+def start_udp_reward_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5006) -> None:
     """
     UDP server:
       - on 'GET' → replies with '{reward:.6f}'
