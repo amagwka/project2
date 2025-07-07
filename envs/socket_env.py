@@ -1,12 +1,10 @@
 import gymnasium as gym
 import numpy as np
 import socket
-import torch
 import subprocess
 import sys
 import importlib
 from time import sleep, perf_counter
-from threading import Thread, Event
 from servers.constants import (
     ARROW_DELAY,
     WAIT_DELAY,
@@ -18,7 +16,7 @@ from typing import Optional, Callable
 from config import EnvConfig
 
 from utils.observation_encoder import ObservationEncoder
-from utils.curiosity_base import CuriosityReward, IntrinsicReward
+from utils.curiosity_base import IntrinsicReward
 from utils.intrinsic import E3BIntrinsicReward, BaseIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
