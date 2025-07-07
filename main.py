@@ -6,6 +6,7 @@ import torch.distributions as td
 from stable_baselines3 import PPO as SB3PPO
 from stable_baselines3.common.env_util import make_vec_env
 from time import sleep
+import time
 from threading import Thread
 from pynput import keyboard
 from utils import logger
@@ -87,6 +88,7 @@ def main() -> None:
 
     while True:
         if paused:
+            time.sleep(0.05)
             continue
 
         state_tensor = torch.from_numpy(obs).float()
