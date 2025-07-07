@@ -55,48 +55,19 @@ class SocketAppEnv(gym.Env):
         server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
     ):
 
-        if config is not None:
-            max_steps = config.max_steps
-            device = config.device
-            action_dim = config.action_dim
-            state_dim = config.state_dim
-            action_host = config.action_host
-            action_port = config.action_port
-            reward_host = config.reward_host
-            reward_port = config.reward_port
-            embedding_model = config.embedding_model
-            combined_server = config.combined_server
-            start_servers = config.start_servers
-            enable_logging = config.enable_logging
-            use_world_model = config.use_world_model
-            world_model_host = config.world_model.host
-            world_model_port = config.world_model.port
-            world_model_path = config.world_model.model_path
-            world_model_type = config.world_model.model_type
-            world_model_interval = config.world_model.interval_steps
-            ir_config = getattr(config, "intrinsic_reward", None)
-            intrinsic_cls_path = getattr(config, "intrinsic_cls", None)
-        else:
-            ir_config = None
-            intrinsic_cls_path = None
-
         super().__init__()
+
         self.max_steps = max_steps
         self.device = device
         self.step_count = 0
         self.action_dim = action_dim
         self.state_dim = state_dim
 
-        self.action_space = gym.spaces.Discrete(action_dim)
-        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(state_dim,), dtype=np.float32)
-
-        # When combined_server=True, both actions and reward queries go
-        # through the same UDP socket/port.  This matches the behaviour of
-        # ``start_combined_udp_server`` in ``action_module.py``.
-        self.combined_server = combined_server
-
+        # UDP configuration
         self.action_addr = (action_host, action_port)
         self.reward_addr = (reward_host, reward_port)
+        self.embedding_model = embedding_model
+        self.combined_server = combined_server
         self.start_servers = start_servers
         self.enable_logging = enable_logging
         self.use_world_model = use_world_model
@@ -104,48 +75,29 @@ class SocketAppEnv(gym.Env):
         self.world_model_path = world_model_path
         self.world_model_type = world_model_type
         self.wm_interval_steps = int(max(1, world_model_interval))
+
+        # Override above attributes from the config if provided
+        ir_config, intrinsic_cls_path = self._init_from_config(config)
+
+        self.action_space = gym.spaces.Discrete(self.action_dim)
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32
+        )
+
         self._server_processes = []
         self._logger = None
         self._last_action_time = perf_counter()
 
-        self.udp_client = udp_client or UdpClient(self.action_addr, self.reward_addr, combined_server)
-        if self.use_world_model:
-            self.wm_client = world_model_client or WorldModelClient(self.wm_addr)
-        else:
-            self.wm_client = None
+        self._init_udp_clients(udp_client, world_model_client)
         self.obs_history = []
 
         self.obs_encoder = obs_encoder or ObservationEncoder(
             source=1,
-            model_name=embedding_model,
-            device=device,
-            embedding_dim=state_dim,
+            model_name=self.embedding_model,
+            device=self.device,
+            embedding_dim=self.state_dim,
         )
-        if intrinsic_reward is not None:
-            self.intrinsic = intrinsic_reward
-        else:
-            if intrinsic_cls_path is not None:
-                mod_name, cls_name = intrinsic_cls_path.rsplit(".", 1)
-                module = importlib.import_module(mod_name)
-                cls = getattr(module, cls_name)
-                try:
-                    self.intrinsic = cls(latent_dim=state_dim, device=device)
-                except TypeError:
-                    self.intrinsic = cls()
-            elif ir_config is not None:
-                module = importlib.import_module(ir_config.module_path)
-                cls = getattr(module, ir_config.class_name)
-                try:
-                    self.intrinsic = cls(latent_dim=state_dim, device=device)
-                except TypeError:
-                    self.intrinsic = cls()
-            else:
-                self.intrinsic = E3BIntrinsicReward(
-                    latent_dim=state_dim,
-                    decay=1.0,
-                    ridge=0.1,
-                    device=device,
-                )
+        self._init_intrinsic(intrinsic_reward, intrinsic_cls_path, ir_config)
 
         if self.enable_logging:
             from utils import logger
@@ -237,6 +189,82 @@ class SocketAppEnv(gym.Env):
 
     def _send_reset(self):
         self.udp_client.send_reset()
+
+    def _init_from_config(self, config: Optional[EnvConfig]):
+        """Populate attributes from a configuration object."""
+        if config is None:
+            return None, None
+
+        self.max_steps = config.max_steps
+        self.device = config.device
+        self.action_dim = config.action_dim
+        self.state_dim = config.state_dim
+        self.action_addr = (config.action_host, config.action_port)
+        self.reward_addr = (config.reward_host, config.reward_port)
+        self.embedding_model = config.embedding_model
+        self.combined_server = config.combined_server
+        self.start_servers = config.start_servers
+        self.enable_logging = config.enable_logging
+        self.use_world_model = config.use_world_model
+        self.wm_addr = (config.world_model.host, config.world_model.port)
+        self.world_model_path = config.world_model.model_path
+        self.world_model_type = config.world_model.model_type
+        self.wm_interval_steps = int(max(1, config.world_model.interval_steps))
+
+        ir_cfg = getattr(config, "intrinsic_reward", None)
+        ir_cls = getattr(config, "intrinsic_cls", None)
+        return ir_cfg, ir_cls
+
+    def _init_udp_clients(
+        self,
+        udp_client: Optional[UdpClient],
+        world_model_client: Optional[WorldModelClient],
+    ) -> None:
+        """Initialize UDP clients used by the environment."""
+        self.udp_client = udp_client or UdpClient(
+            self.action_addr, self.reward_addr, self.combined_server
+        )
+        if self.use_world_model:
+            self.wm_client = world_model_client or WorldModelClient(self.wm_addr)
+        else:
+            self.wm_client = None
+
+    def _init_intrinsic(
+        self,
+        intrinsic_reward: Optional[BaseIntrinsicReward],
+        intrinsic_cls_path: Optional[str],
+        ir_config: Optional[IntrinsicReward],
+    ) -> None:
+        """Instantiate the intrinsic reward helper."""
+        if intrinsic_reward is not None:
+            self.intrinsic = intrinsic_reward
+            return
+
+        if intrinsic_cls_path is not None:
+            mod_name, cls_name = intrinsic_cls_path.rsplit(".", 1)
+            module = importlib.import_module(mod_name)
+            cls = getattr(module, cls_name)
+            try:
+                self.intrinsic = cls(latent_dim=self.state_dim, device=self.device)
+            except TypeError:
+                self.intrinsic = cls()
+            return
+
+        if ir_config is not None:
+            module = importlib.import_module(ir_config.module_path)
+            cls = getattr(module, ir_config.class_name)
+            try:
+                self.intrinsic = cls(latent_dim=self.state_dim, device=self.device)
+            except TypeError:
+                self.intrinsic = cls()
+            return
+
+        self.intrinsic = E3BIntrinsicReward(
+            latent_dim=self.state_dim,
+            decay=1.0,
+            ridge=0.1,
+            device=self.device,
+        )
 
     def render(self):
         pass  # No GUI
