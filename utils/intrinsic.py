@@ -1,18 +1,8 @@
 import torch
 
+from .curiosity_base import CuriosityReward
 
-class BaseIntrinsicReward:
-    """Interface for plug-in curiosity reward modules."""
-
-    def reset(self) -> None:  # pragma: no cover - interface method
-        """Reset any internal state maintained by the module."""
-        raise NotImplementedError
-
-    def compute(self, h):  # pragma: no cover - interface method
-        """Return the intrinsic reward for the given embedding."""
-        raise NotImplementedError
-
-class E3BIntrinsicReward(BaseIntrinsicReward):
+class E3BIntrinsicReward(CuriosityReward):
     def __init__(self, latent_dim=384, decay=0.9995, ridge=0.1, device="cpu"):
         """
         Args:
@@ -31,7 +21,7 @@ class E3BIntrinsicReward(BaseIntrinsicReward):
         """Reset the inverse covariance matrix to its initial state."""
         self.cov_inverse = torch.eye(self.latent_dim, device=self.device) * (1.0 / self.ridge)
 
-    def compute(self, h):
+    def compute(self, h, env=None):
         """
         Compute E3B intrinsic reward for a given embedding and update covariance.
         Args:

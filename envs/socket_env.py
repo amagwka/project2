@@ -4,6 +4,7 @@ import socket
 import torch
 import subprocess
 import sys
+import importlib
 from time import sleep, perf_counter
 from threading import Thread, Event
 from servers.constants import (
@@ -17,7 +18,8 @@ from typing import Optional, Callable
 from config import EnvConfig
 
 from utils.observation_encoder import ObservationEncoder
-from utils.intrinsic import BaseIntrinsicReward, E3BIntrinsicReward
+from utils.curiosity_base import CuriosityReward
+from utils.intrinsic import E3BIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
@@ -49,7 +51,7 @@ class SocketAppEnv(gym.Env):
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
-        intrinsic_reward: Optional[BaseIntrinsicReward] = None,
+        intrinsic_reward: Optional[CuriosityReward] = None,
         server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
     ):
 
@@ -73,6 +75,9 @@ class SocketAppEnv(gym.Env):
             world_model_type = config.world_model.model_type
             world_model_interval = config.world_model.interval_steps
             world_model_time = config.world_model.time_interval  # unused
+            ir_config = config.intrinsic_reward
+        else:
+            ir_config = None
 
         super().__init__()
         self.max_steps = max_steps
@@ -118,12 +123,20 @@ class SocketAppEnv(gym.Env):
             device=device,
             embedding_dim=state_dim,
         )
-        self.intrinsic = intrinsic_reward or E3BIntrinsicReward(
-            latent_dim=state_dim,
-            decay=1.0,
-            ridge=0.1,
-            device=device,
-        )
+        if intrinsic_reward is not None:
+            self.intrinsic = intrinsic_reward
+        else:
+            if ir_config is not None:
+                module = importlib.import_module(ir_config.module_path)
+                cls = getattr(module, ir_config.class_name)
+                self.intrinsic = cls(latent_dim=state_dim, device=device)
+            else:
+                self.intrinsic = E3BIntrinsicReward(
+                    latent_dim=state_dim,
+                    decay=1.0,
+                    ridge=0.1,
+                    device=device,
+                )
 
         if self.enable_logging:
             from utils import logger
@@ -169,7 +182,7 @@ class SocketAppEnv(gym.Env):
 
         obs_np = self.obs_encoder.get_embedding()
         extrinsic = self._get_reward()
-        intrinsic = self.intrinsic.compute(obs_np)
+        intrinsic = self.intrinsic.compute(obs_np, self)
         model_bonus = 0.0
         self.obs_history.append(obs_np.copy())
         if len(self.obs_history) > 30:

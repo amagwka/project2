@@ -25,6 +25,13 @@ class WorldModelConfig:
     model_type: str = "lstm"  # "mlp", "gru" or "lstm"
     interval_steps: int = 15
 
+
+@dataclass
+class IntrinsicRewardConfig:
+    """Location of the curiosity reward module."""
+    module_path: str = "utils.intrinsic"
+    class_name: str = "E3BIntrinsicReward"
+
 @dataclass
 class EnvConfig:
     """Default parameters for ``SocketAppEnv``."""
@@ -42,6 +49,7 @@ class EnvConfig:
     enable_logging: bool = True
     use_world_model: bool = True
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
+    intrinsic_reward: IntrinsicRewardConfig = field(default_factory=IntrinsicRewardConfig)
 
 
 @dataclass
