@@ -30,10 +30,9 @@ This repository implements a reinforcement learning setup that interacts with an
 * Actions are sent over UDP to a keyboard server.
 * Extrinsic rewards are fetched from another UDP port.
 * Observations are encoded with `LocalObs` and passed into an intrinsic reward module for novelty bonuses (defaults to `E3BIntrinsicReward`).
-  Custom modules implementing ``BaseIntrinsicReward`` can be configured via ``EnvConfig.intrinsic_cls``.
 * Extrinsic and intrinsic rewards are summed for each step.
 
-### Custom Curiosity Modules
+## Custom Curiosity Modules
 The environment can dynamically load a curiosity plugin via the
 ``EnvConfig.intrinsic_cls`` setting. Each plugin must implement the
 ``BaseIntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
