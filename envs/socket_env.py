@@ -228,6 +228,13 @@ class SocketAppEnv(gym.Env):
         else:
             self.wm_client = None
 
+    def _instantiate_intrinsic(self, cls):
+        """Instantiate ``cls`` with ``latent_dim``/``device`` if possible."""
+        try:
+            return cls(latent_dim=self.state_dim, device=self.device)
+        except TypeError:
+            return cls()
+
     def _init_intrinsic(
         self,
         intrinsic_reward: Optional[BaseIntrinsicReward],
@@ -243,19 +250,13 @@ class SocketAppEnv(gym.Env):
             mod_name, cls_name = intrinsic_cls_path.rsplit(".", 1)
             module = importlib.import_module(mod_name)
             cls = getattr(module, cls_name)
-            try:
-                self.intrinsic = cls(latent_dim=self.state_dim, device=self.device)
-            except TypeError:
-                self.intrinsic = cls()
+            self.intrinsic = self._instantiate_intrinsic(cls)
             return
 
         if ir_config is not None:
             module = importlib.import_module(ir_config.module_path)
             cls = getattr(module, ir_config.class_name)
-            try:
-                self.intrinsic = cls(latent_dim=self.state_dim, device=self.device)
-            except TypeError:
-                self.intrinsic = cls()
+            self.intrinsic = self._instantiate_intrinsic(cls)
             return
 
         self.intrinsic = E3BIntrinsicReward(
