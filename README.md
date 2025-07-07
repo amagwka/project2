@@ -24,26 +24,26 @@ env = SocketAppEnv(udp_client=udp, obs_encoder=encoder, start_servers=False)
 
 # Undertale RL via UDP
 
-This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward` by default. Any module implementing the `IntrinsicReward` interface can be passed via the `intrinsic_reward` parameter or loaded via the configuration for custom curiosity bonuses.
+This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward` by default. Any module implementing the `BaseIntrinsicReward` interface can be passed via the `intrinsic_reward` parameter or loaded via the configuration for custom curiosity bonuses.
 
 ## Environment Workflow
 * Actions are sent over UDP to a keyboard server.
 * Extrinsic rewards are fetched from another UDP port.
 * Observations are encoded with `LocalObs` and passed into an intrinsic reward module for novelty bonuses (defaults to `E3BIntrinsicReward`).
-  Custom modules implementing ``IntrinsicReward`` can be configured via ``EnvConfig.intrinsic_reward``.
+  Custom modules implementing ``BaseIntrinsicReward`` can be configured via ``EnvConfig.intrinsic_cls``.
 * Extrinsic and intrinsic rewards are summed for each step.
 
 ### Custom Curiosity Modules
 The environment can dynamically load a curiosity plugin via the
-``EnvConfig.intrinsic_reward`` settings. Each plugin must implement the
-``IntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
+``EnvConfig.intrinsic_cls`` setting. Each plugin must implement the
+``BaseIntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
 
 Minimal example implementing a constant bonus:
 
 ```python
-from utils.curiosity_base import IntrinsicReward
+from utils.intrinsic import BaseIntrinsicReward
 
-class MyReward(IntrinsicReward):
+class MyReward(BaseIntrinsicReward):
     def reset(self) -> None:
         pass
 
@@ -56,8 +56,7 @@ env = SocketAppEnv(intrinsic_reward=MyReward(), start_servers=False)
 # Or via configuration
 from config import get_config
 cfg = get_config()
-cfg.env.intrinsic_reward.module_path = "examples.custom_curiosity"
-cfg.env.intrinsic_reward.class_name = "MyReward"
+cfg.env.intrinsic_cls = "examples.custom_curiosity.MyReward"
 env = SocketAppEnv(config=cfg.env, start_servers=False)
 ```
 

@@ -50,6 +50,7 @@ class EnvConfig:
     use_world_model: bool = True
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
     intrinsic_reward: IntrinsicRewardConfig = field(default_factory=IntrinsicRewardConfig)
+    intrinsic_cls: str = "utils.intrinsic.E3BIntrinsicReward"
 
 
 @dataclass

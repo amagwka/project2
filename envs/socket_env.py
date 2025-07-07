@@ -19,7 +19,7 @@ from config import EnvConfig
 
 from utils.observation_encoder import ObservationEncoder
 from utils.curiosity_base import CuriosityReward, IntrinsicReward
-from utils.intrinsic import E3BIntrinsicReward
+from utils.intrinsic import E3BIntrinsicReward, BaseIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
@@ -51,7 +51,7 @@ class SocketAppEnv(gym.Env):
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
-        intrinsic_reward: Optional[IntrinsicReward] = None,
+        intrinsic_reward: Optional[BaseIntrinsicReward] = None,
         server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
     ):
 
@@ -74,10 +74,12 @@ class SocketAppEnv(gym.Env):
             world_model_path = config.world_model.model_path
             world_model_type = config.world_model.model_type
             world_model_interval = config.world_model.interval_steps
-            world_model_time = config.world_model.time_interval  # unused
-            ir_config = config.intrinsic_reward
+            world_model_time = getattr(config.world_model, "time_interval", None)  # unused
+            ir_config = getattr(config, "intrinsic_reward", None)
+            intrinsic_cls_path = getattr(config, "intrinsic_cls", None)
         else:
             ir_config = None
+            intrinsic_cls_path = None
 
         super().__init__()
         self.max_steps = max_steps
@@ -126,10 +128,21 @@ class SocketAppEnv(gym.Env):
         if intrinsic_reward is not None:
             self.intrinsic = intrinsic_reward
         else:
-            if ir_config is not None:
+            if intrinsic_cls_path is not None:
+                mod_name, cls_name = intrinsic_cls_path.rsplit(".", 1)
+                module = importlib.import_module(mod_name)
+                cls = getattr(module, cls_name)
+                try:
+                    self.intrinsic = cls(latent_dim=state_dim, device=device)
+                except TypeError:
+                    self.intrinsic = cls()
+            elif ir_config is not None:
                 module = importlib.import_module(ir_config.module_path)
                 cls = getattr(module, ir_config.class_name)
-                self.intrinsic = cls(latent_dim=state_dim, device=device)
+                try:
+                    self.intrinsic = cls(latent_dim=state_dim, device=device)
+                except TypeError:
+                    self.intrinsic = cls()
             else:
                 self.intrinsic = E3BIntrinsicReward(
                     latent_dim=state_dim,

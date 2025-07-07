@@ -9,8 +9,14 @@ import pytest
 
 try:
     from envs.socket_env import SocketAppEnv
+    from utils.intrinsic import BaseIntrinsicReward
 except ModuleNotFoundError:
     SocketAppEnv = None
+    class BaseIntrinsicReward:
+        def reset(self):
+            pass
+        def compute(self, obs, env):
+            return 0.0
 
 
 
@@ -43,7 +49,7 @@ class DummyObsEncoder:
         pass
 
 
-class DummyIntrinsic:
+class DummyIntrinsic(BaseIntrinsicReward):
     def __init__(self):
         self.reset_called = False
 
@@ -115,8 +121,7 @@ def test_socket_env_config_intrinsic():
     obs_enc = DummyObsEncoder()
     from config import get_config
     cfg = get_config()
-    cfg.env.intrinsic_reward.module_path = "examples.custom_curiosity"
-    cfg.env.intrinsic_reward.class_name = "ConstantCuriosity"
+    cfg.env.intrinsic_cls = "examples.custom_curiosity.ConstantCuriosity"
     env = SocketAppEnv(
         max_steps=1,
         device="cpu",
