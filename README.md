@@ -17,9 +17,9 @@ from utils.udp_client import UdpClient
 from utils.observation_encoder import ObservationEncoder
 from envs.socket_env import SocketAppEnv
 
-udp = UdpClient(("127.0.0.1", 5005), ("127.0.0.1", 5006))
-encoder = ObservationEncoder(device="cuda")
-env = SocketAppEnv(udp_client=udp, obs_encoder=encoder, start_servers=False)
+with UdpClient(("127.0.0.1", 5005), ("127.0.0.1", 5006)) as udp:
+    encoder = ObservationEncoder(device="cuda")
+    env = SocketAppEnv(udp_client=udp, obs_encoder=encoder, start_servers=False)
 ```
 
 # Undertale RL via UDP
