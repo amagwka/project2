@@ -1,19 +1,9 @@
 import torch
-from abc import ABC, abstractmethod
-
-from .curiosity_base import CuriosityReward, IntrinsicReward
+from .curiosity_base import IntrinsicReward
 
 
-class BaseIntrinsicReward(CuriosityReward, IntrinsicReward, ABC):
+class BaseIntrinsicReward(IntrinsicReward):
     """Abstract base class for intrinsic reward modules."""
-
-    @abstractmethod
-    def reset(self) -> None:
-        """Reset the internal state if any."""
-
-    @abstractmethod
-    def compute(self, observation, env=None) -> float:
-        """Return the intrinsic reward for an observation."""
 
 class E3BIntrinsicReward(BaseIntrinsicReward):
     def __init__(self, latent_dim=384, decay=0.9995, ridge=0.1, device="cpu"):
