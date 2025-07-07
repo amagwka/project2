@@ -86,23 +86,24 @@ class RolloutBufferNoDone:
         if new_state.shape != (self.state.shape[1],):
             raise ValueError(f"Expected new_state shape ({self.state.shape[1]},), got {tuple(new_state.shape)}")
     
-        N        = self.size
-        p        = self.ptr
-        avail    = N if self.full else p
-        seq_buf  = []
+        N       = self.size
+        p       = self.ptr
+        avail   = N if self.full else p
 
-        for off in self.offsets.tolist():
-            if off == 0:
-                seq_buf.append(new_state)
-            elif off <= avail - 1:
-                idx = (p - off) % N
-                seq_buf.append(self.state[idx])
-            else:
-                pad_vec = torch.full((self.state.shape[1],), self.pad_val, device=self.device)
-                seq_buf.append(pad_vec)
+        # Clamp offsets so ``idx`` never references uninitialised elements.
+        max_off = max(avail - 1, 0)
+        idx = (p - self.offsets.clamp(max=max_off)) % N
 
-        seq = torch.stack(seq_buf, dim=0).unsqueeze(0)
-        return seq
+        seq = self.state[idx]
+
+        # Pad where history is insufficient
+        pad_mask = self.offsets > avail - 1
+        seq[pad_mask] = self.pad_val
+
+        # Insert the provided ``new_state`` for the most recent step
+        seq[self.offsets == 0] = new_state
+
+        return seq.unsqueeze(0)
 
         
 def compute_gae(reward, value, gamma=0.995, lam=0.99):
