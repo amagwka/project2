@@ -104,8 +104,9 @@ packages pinned in `requirements.txt`.
    ```
 3. Launch the training script:
    ```bash
-   python main.py
+   python main.py [--sb3] [--timesteps N]
    ```
+   When running without `--sb3`, press **F9** to pause or resume training.
 4. Run a quick random-action demo to inspect rewards:
    ```bash
    python examples/random_agent.py
