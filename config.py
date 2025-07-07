@@ -24,6 +24,9 @@ class WorldModelConfig:
     model_path: str = "lab/scripts/mlp_world_model.pt"
     model_type: str = "mlp"  # "mlp", "gru" or "lstm"
     interval_steps: int = 15
+    # ``time_interval`` previously throttled requests based on wall clock.  The
+    # environment now relies solely on ``interval_steps`` so this field is kept
+    # for backward compatibility but is otherwise ignored.
     time_interval: float = 1.0
 
 
