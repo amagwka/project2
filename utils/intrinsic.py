@@ -1,8 +1,8 @@
 import torch
 
-from .curiosity_base import CuriosityReward
+from .curiosity_base import CuriosityReward, IntrinsicReward
 
-class E3BIntrinsicReward(CuriosityReward):
+class E3BIntrinsicReward(CuriosityReward, IntrinsicReward):
     def __init__(self, latent_dim=384, decay=0.9995, ridge=0.1, device="cpu"):
         """
         Args:
