@@ -59,7 +59,19 @@ def test_bandit_env_ppo():
         if buf.ready():
             s_b, a_b, r_b, v_b, lp_b = buf.get()
             returns, adv = compute_gae(r_b, v_b)
-            ppo_update(actor, critic, opt_a, opt_c, s_b, a_b, lp_b, returns, adv)
+            ppo_update(
+                actor,
+                critic,
+                opt_a,
+                opt_c,
+                s_b,
+                a_b,
+                lp_b,
+                returns,
+                adv,
+                num_epochs=2,
+                batch_size=16,
+            )
 
     with torch.no_grad():
         seq = torch.zeros(1, buf.seq_len, state_dim)
