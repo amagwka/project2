@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 import socket
 import importlib
+import threading
 from time import sleep, perf_counter
 from servers.constants import (
     ARROW_DELAY,
@@ -11,6 +12,7 @@ from servers.constants import (
     WAIT_IDX,
 )
 from servers.manager import ServerManager
+from servers import UdpServer
 from typing import Optional, Callable
 from config import EnvConfig
 
@@ -50,7 +52,7 @@ class SocketAppEnv(gym.Env):
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
         intrinsic_reward: Optional[BaseIntrinsicReward] = None,
-        server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
+        server_launcher: Optional[Callable[["SocketAppEnv"], Optional[UdpServer]]] = None,
         server_manager: Optional[ServerManager] = None,
     ):
 
@@ -103,10 +105,17 @@ class SocketAppEnv(gym.Env):
             self._logger = logger
 
         self._server_launcher = server_launcher
+        self._server_instance: Optional[UdpServer] = None
+        self._server_thread = None
 
         if self.start_servers:
             if self._server_launcher is not None:
-                self._server_launcher(self)
+                srv = self._server_launcher(self)
+                if isinstance(srv, UdpServer):
+                    self._server_instance = srv
+                    t = threading.Thread(target=srv.serve, daemon=True)
+                    t.start()
+                    self._server_thread = t
             elif self._server_manager is not None:
                 self._server_manager.start(self)
 
@@ -278,6 +287,10 @@ class SocketAppEnv(gym.Env):
             self.obs_encoder.close()
         if self._server_manager is not None:
             self._server_manager.stop()
+        if self._server_instance is not None:
+            self._server_instance.shutdown()
+            if self._server_thread is not None:
+                self._server_thread.join(timeout=1)
 
 
 def create_socket_env(cfg: EnvConfig, server_manager: Optional[ServerManager] = None) -> SocketAppEnv:
