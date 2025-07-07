@@ -1,6 +1,8 @@
-from utils.curiosity_base import CuriosityReward
+"""Minimal custom curiosity module returning a constant bonus."""
 
-class ConstantCuriosity(CuriosityReward):
+from utils.curiosity_base import IntrinsicReward
+
+class ConstantCuriosity(IntrinsicReward):
     """Simple curiosity module returning a constant bonus."""
 
     def __init__(self, value: float = 1.0):
@@ -9,5 +11,5 @@ class ConstantCuriosity(CuriosityReward):
     def reset(self) -> None:
         pass
 
-    def compute(self, obs, env):
+    def compute(self, observation, env) -> float:
         return float(self.value)
