@@ -35,7 +35,7 @@ class IntrinsicRewardConfig:
 @dataclass
 class EnvConfig:
     """Default parameters for ``SocketAppEnv``."""
-    max_steps: int = 1e10
+    max_steps: int = int(1e10)
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     action_dim: int = 7
     state_dim: int = 384
