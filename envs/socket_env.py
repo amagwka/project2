@@ -16,9 +16,11 @@ from servers.constants import (
 from typing import Optional
 from config import EnvConfig
 
-from utils.observations import LocalObs
+from utils.observation_encoder import ObservationEncoder
 from utils.intrinsic import E3BIntrinsicReward
 from utils.cosine import cosine_distance
+from utils.udp_client import UdpClient
+from utils.world_model_client import WorldModelClient
 
 class SocketAppEnv(gym.Env):
     metadata = {"render_modes": []}
@@ -45,6 +47,9 @@ class SocketAppEnv(gym.Env):
         world_model_interval=5,
         world_model_time=1.0,  # unused
         config: Optional[EnvConfig] = None,
+        udp_client: Optional[UdpClient] = None,
+        world_model_client: Optional[WorldModelClient] = None,
+        obs_encoder: Optional[ObservationEncoder] = None,
     ):
 
         if config is not None:
@@ -99,22 +104,14 @@ class SocketAppEnv(gym.Env):
         self._logger = None
         self._last_action_time = perf_counter()
 
-        self.action_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if combined_server:
-            self.reward_socket = self.action_socket
-            self.reward_addr = self.action_addr
-        else:
-            self.reward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.reward_socket.settimeout(0.2)
-
+        self.udp_client = udp_client or UdpClient(self.action_addr, self.reward_addr, combined_server)
         if self.use_world_model:
-            self.wm_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.wm_socket.settimeout(0.2)
+            self.wm_client = world_model_client or WorldModelClient(self.wm_addr)
         else:
-            self.wm_socket = None
+            self.wm_client = None
         self.obs_history = []
 
-        self.obs_encoder = LocalObs(source=1, mode="dino", model_name=embedding_model, device=device, embedding_dim=state_dim)
+        self.obs_encoder = obs_encoder or ObservationEncoder(source=1, model_name=embedding_model, device=device, embedding_dim=state_dim)
         self.intrinsic = E3BIntrinsicReward(latent_dim=state_dim, decay=1.0, ridge=0.1, device=device)
 
         if self.enable_logging:
@@ -168,14 +165,10 @@ class SocketAppEnv(gym.Env):
         ):
             context = np.stack(self.obs_history, axis=0).astype(np.float32) * 10.0
             try:
-                self.wm_socket.settimeout(0.2)
-                self.wm_socket.sendto(context.tobytes(), self.wm_addr)
-                pred_bytes, _ = self.wm_socket.recvfrom(65535)
-                # test here for timeout error
-                pred = np.frombuffer(pred_bytes, dtype=np.float32)
+                pred = self.wm_client.predict(context)
                 if pred.size == self.state_dim:
                     dist = cosine_distance(pred, obs_np)
-                    model_bonus = -dist*10
+                    model_bonus = -dist * 10
             except socket.timeout:
                 model_bonus = 99.99
             except Exception:
@@ -199,40 +192,23 @@ class SocketAppEnv(gym.Env):
         return obs_np.astype(np.float32), reward, terminated, truncated, info
 
     def _send_action(self, action_idx):
-        msg = str(action_idx).encode()
-        self.action_socket.sendto(msg, self.action_addr)
-        if self.combined_server:
-            # Combined server replies to every command. Read and discard
-            # the acknowledgement to keep the socket state clean for the
-            # next reward query.
-            try:
-                self.reward_socket.recvfrom(32)
-            except Exception:
-                pass
+        self.udp_client.send_action(action_idx)
 
     def _get_reward(self):
-        try:
-            self.reward_socket.sendto(b"GET", self.reward_addr)
-            data, _ = self.reward_socket.recvfrom(32)
-            return float(data.decode().strip())
-        except Exception:
-            return 0.0
+        return self.udp_client.get_reward()
 
     def _send_reset(self):
-        try:
-            self.reward_socket.sendto(b"RESET", self.reward_addr)
-            self.reward_socket.recvfrom(32)
-        except Exception:
-            pass
+        self.udp_client.send_reset()
 
     def render(self):
         pass  # No GUI
 
     def close(self):
-        self.action_socket.close()
-        self.reward_socket.close()
-        if self.wm_socket is not None:
-            self.wm_socket.close()
+        self.udp_client.close()
+        if self.wm_client is not None:
+            self.wm_client.close()
+        if hasattr(self.obs_encoder, "close"):
+            self.obs_encoder.close()
         for proc in self._server_processes:
             proc.terminate()
             proc.wait(timeout=1)
