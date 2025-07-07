@@ -63,11 +63,14 @@ See ``examples/custom_curiosity.py`` for a complete module returning a constant
 bonus.
 
 ## Action and Reward Server
-`servers/action_server.py` exposes `start_combined_udp_server` which wraps
-`ExternalRewardTracker` from `servers/reward_server.py` and processes both
-actions and reward queries on the same UDP port. The server now ignores
-`ConnectionResetError` events so occasional UDP connection resets on Windows do
-not terminate the process. Run this module to start the server.
+Both action and reward helpers are built on top of `UdpServer` defined in
+`servers/base.py`.  `start_combined_udp_server` from `servers/action_server.py`
+listens on a single port and dispatches incoming messages to either the keyboard
+handler or the reward tracker.  `start_udp_reward_server` in
+`servers/reward_server.py` exposes only the reward commands.  Each handler
+understands the `GET` and `RESET` commands and replies with the computed reward
+or ``OK`` respectively.  Run ``python -m servers.action_server`` to launch the
+combined server.
 
 ## Neural Modules and PPO
 * `models/nn.py` contains LSTM based actor and critic networks.
