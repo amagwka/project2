@@ -68,7 +68,6 @@ def main() -> None:
             world_model_path=cfg.env.world_model.model_path,
             world_model_type=cfg.env.world_model.model_type,
             world_model_interval=cfg.env.world_model.interval_steps,
-            world_model_time=cfg.env.world_model.time_interval,
         )
         vec_env = make_vec_env(env_fn, n_envs=1)
         model = SB3PPO(
