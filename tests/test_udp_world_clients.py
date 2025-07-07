@@ -9,19 +9,12 @@ sys.path.insert(0, str(ROOT))
 
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
-
-
-def _get_port():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+from tests.utils import get_free_udp_port
 
 
 def test_udp_client_basic_roundtrip():
-    action_port = _get_port()
-    reward_port = _get_port()
+    action_port = get_free_udp_port()
+    reward_port = get_free_udp_port()
 
     action_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     action_sock.bind(("127.0.0.1", action_port))
@@ -76,7 +69,7 @@ def test_udp_client_basic_roundtrip():
 
 
 def test_world_model_client_predict_roundtrip():
-    port = _get_port()
+    port = get_free_udp_port()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("127.0.0.1", port))
     sock.settimeout(0.1)

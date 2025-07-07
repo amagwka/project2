@@ -9,14 +9,7 @@ sys.path.insert(0, str(ROOT))
 
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
-
-
-def get_free_udp_port() -> int:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+from tests.utils import get_free_udp_port
 
 
 def test_udp_client_send_action_and_get_reward():
