@@ -50,7 +50,7 @@ class DummyIntrinsic:
     def reset(self) -> None:
         self.reset_called = True
 
-    def compute(self, obs) -> float:
+    def compute(self, obs, env) -> float:
         return 42.0
 
 
@@ -107,3 +107,29 @@ def test_socket_env_custom_intrinsic():
     assert intrinsic.reset_called
     env.close()
 
+
+def test_socket_env_config_intrinsic():
+    if SocketAppEnv is None:
+        pytest.skip("gymnasium not installed")
+    udp = DummyUdpClient(reward=1.0)
+    obs_enc = DummyObsEncoder()
+    from config import get_config
+    cfg = get_config()
+    cfg.env.intrinsic_reward.module_path = "examples.custom_curiosity"
+    cfg.env.intrinsic_reward.class_name = "ConstantCuriosity"
+    env = SocketAppEnv(
+        max_steps=1,
+        device="cpu",
+        embedding_model=None,
+        combined_server=False,
+        enable_logging=False,
+        start_servers=False,
+        use_world_model=False,
+        udp_client=udp,
+        obs_encoder=obs_enc,
+        config=cfg.env,
+    )
+    env.reset()
+    _, reward, _, _, info = env.step(0)
+    assert info["intrinsic"] == 1.0
+    env.close()
