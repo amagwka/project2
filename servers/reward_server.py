@@ -1,10 +1,11 @@
-import socket
 import time
 import threading
 
 import psutil
 from pymem import Pymem
 from pymem.exception import MemoryReadError
+
+from servers.base import UdpServer
 
 from servers.tracker import RewardTracker
 
@@ -29,8 +30,8 @@ class ExternalRewardTracker(RewardTracker):
         self.base_addr_and_offsets = [
             (self.pm.base_address + 0x00408950, [0x0, 0x44, 0x10, 0x364, 0x3F0], "Experience Points"),
             (self.pm.base_address + 0x00408950, [0x0, 0x44, 0x10, 0x1F0, 0x620], "Health Points"),
-            (self.pm.base_address + 0x00408950, [0x0, 0x44, 0x10, 0x190, 0x10],  "Fight Metric"),
-            (self.pm.base_address + 0x618EA0,              [0x0],                  "Room"),
+            (self.pm.base_address + 0x00408950, [0x0, 0x44, 0x10, 0x190, 0x10], "Fight Metric"),
+            (self.pm.base_address + 0x618EA0,              [0x0],   "Room"),
             (self.pm.base_address + 0x00408950, [0x0, 0x44, 0x10, 0x13C, 0x4A0], "Maximum Health Points"),
         ]
 
@@ -94,34 +95,21 @@ class ExternalRewardTracker(RewardTracker):
         self.pm.close_process()
 
 
-def start_udp_reward_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5006) -> None:
-    """
-    UDP server:
-      - on 'GET' → replies with '{reward:.6f}'
-      - on 'RESET' → replies 'OK'
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((host, port))
-    print(f"[Server] Listening on udp://{host}:{port}")
+def start_udp_reward_server(tracker, host="0.0.0.0", port=5006):
+    """Start a UDP server that replies to GET and RESET commands."""
 
-    try:
-        while True:
-            data, addr = sock.recvfrom(64)
-            cmd = data.decode("utf-8", errors="ignore").strip().upper()
-            if cmd == "GET":
-                r = tracker.compute_reward()
-                msg = f"{r:.6f}".encode()
-            elif cmd == "RESET":
-                tracker.reset()
-                msg = b"OK"
-            else:
-                msg = b"ERR"
-            sock.sendto(msg, addr)
-    except KeyboardInterrupt:
-        print("\n[Server] Shutting down.")
-    finally:
-        sock.close()
-        tracker.close()
+    def handler(msg: str, addr):
+        cmd = msg.strip().upper()
+        if cmd == "GET":
+            r = tracker.compute_reward()
+            return f"{r:.6f}".encode()
+        if cmd == "RESET":
+            tracker.reset()
+            return b"OK"
+        return b"ERR"
+
+    server = UdpServer(host, port, buffer_size=64)
+    server.serve_forever(handler, cleanup=tracker.close)
 
 
 if __name__ == "__main__":
