@@ -8,6 +8,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from envs.bandit_env import MultiArmedBanditEnv
 from envs.continuous_bandit_env import ContinuousBanditEnv
 from envs.socket_env import create_socket_env
+from servers.manager import ServerManager
 from config import get_config
 
 
@@ -23,9 +24,12 @@ def make_env(name: str) -> Callable[[], gym.Env]:
         return _f
     if name == "socket":
         cfg = get_config()
+        manager = ServerManager() if cfg.env.start_servers else None
 
         def _f() -> gym.Env:
-            return create_socket_env(cfg.env)
+            return create_socket_env(cfg.env, server_manager=manager)
+
+        _f.manager = manager
         return _f
     raise ValueError(f"Unknown env '{name}'")
 
@@ -56,6 +60,8 @@ def main() -> None:
     action, _ = model.predict(obs, deterministic=True)
     print("Learned action:", action)
     vec_env.close()
+    if hasattr(env_fn, "manager") and env_fn.manager is not None:
+        env_fn.manager.stop()
 
 
 if __name__ == "__main__":
