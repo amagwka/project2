@@ -229,7 +229,8 @@ class SocketAppEnv(gym.Env):
             self.wm_client = None
 
     def _instantiate_intrinsic(self, cls):
-        """Instantiate ``cls`` with ``latent_dim`` and ``device`` if possible."""
+        """Instantiate ``cls`` with ``latent_dim``/``device`` if possible."""
+
         try:
             return cls(latent_dim=self.state_dim, device=self.device)
         except TypeError:
