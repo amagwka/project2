@@ -17,7 +17,7 @@ from typing import Optional, Callable
 from config import EnvConfig
 
 from utils.observation_encoder import ObservationEncoder
-from utils.intrinsic import E3BIntrinsicReward
+from utils.intrinsic import BaseIntrinsicReward, E3BIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
@@ -49,6 +49,7 @@ class SocketAppEnv(gym.Env):
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
+        intrinsic_reward: Optional[BaseIntrinsicReward] = None,
         server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
     ):
 
@@ -111,8 +112,18 @@ class SocketAppEnv(gym.Env):
             self.wm_client = None
         self.obs_history = []
 
-        self.obs_encoder = obs_encoder or ObservationEncoder(source=1, model_name=embedding_model, device=device, embedding_dim=state_dim)
-        self.intrinsic = E3BIntrinsicReward(latent_dim=state_dim, decay=1.0, ridge=0.1, device=device)
+        self.obs_encoder = obs_encoder or ObservationEncoder(
+            source=1,
+            model_name=embedding_model,
+            device=device,
+            embedding_dim=state_dim,
+        )
+        self.intrinsic = intrinsic_reward or E3BIntrinsicReward(
+            latent_dim=state_dim,
+            decay=1.0,
+            ridge=0.1,
+            device=device,
+        )
 
         if self.enable_logging:
             from utils import logger

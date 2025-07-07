@@ -1,6 +1,18 @@
 import torch
 
-class E3BIntrinsicReward:
+
+class BaseIntrinsicReward:
+    """Interface for plug-in curiosity reward modules."""
+
+    def reset(self) -> None:  # pragma: no cover - interface method
+        """Reset any internal state maintained by the module."""
+        raise NotImplementedError
+
+    def compute(self, h):  # pragma: no cover - interface method
+        """Return the intrinsic reward for the given embedding."""
+        raise NotImplementedError
+
+class E3BIntrinsicReward(BaseIntrinsicReward):
     def __init__(self, latent_dim=384, decay=0.9995, ridge=0.1, device="cpu"):
         """
         Args:

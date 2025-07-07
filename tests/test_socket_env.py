@@ -43,6 +43,17 @@ class DummyObsEncoder:
         pass
 
 
+class DummyIntrinsic:
+    def __init__(self):
+        self.reset_called = False
+
+    def reset(self) -> None:
+        self.reset_called = True
+
+    def compute(self, obs) -> float:
+        return 42.0
+
+
 def test_socket_env_basic():
     if SocketAppEnv is None:
         pytest.skip("gymnasium not installed")
@@ -69,5 +80,30 @@ def test_socket_env_basic():
     assert not terminated
     assert truncated
 
+    env.close()
+
+
+def test_socket_env_custom_intrinsic():
+    if SocketAppEnv is None:
+        pytest.skip("gymnasium not installed")
+    udp = DummyUdpClient(reward=1.0)
+    obs_enc = DummyObsEncoder()
+    intrinsic = DummyIntrinsic()
+    env = SocketAppEnv(
+        max_steps=1,
+        device="cpu",
+        embedding_model=None,
+        combined_server=False,
+        enable_logging=False,
+        start_servers=False,
+        use_world_model=False,
+        udp_client=udp,
+        obs_encoder=obs_enc,
+        intrinsic_reward=intrinsic,
+    )
+    env.reset()
+    _, reward, _, _, info = env.step(0)
+    assert info["intrinsic"] == 42.0
+    assert intrinsic.reset_called
     env.close()
 
