@@ -59,15 +59,14 @@ def test_udp_client_basic_roundtrip():
     t1.start()
     t2.start()
 
-    client = UdpClient(("127.0.0.1", action_port), ("127.0.0.1", reward_port))
-    client.send_action(5)
-    r = client.get_reward()
-    client.send_reset()
+    with UdpClient(("127.0.0.1", action_port), ("127.0.0.1", reward_port)) as client:
+        client.send_action(5)
+        r = client.get_reward()
+        client.send_reset()
 
     stop.set()
     t1.join(timeout=1)
     t2.join(timeout=1)
-    client.close()
     action_sock.close()
     reward_sock.close()
 
@@ -94,13 +93,12 @@ def test_world_model_client_predict_roundtrip():
     t = threading.Thread(target=server, daemon=True)
     t.start()
 
-    client = WorldModelClient(("127.0.0.1", port))
-    obs = np.array([1.0, 2.0, 3.0], dtype=np.float32)
-    pred = client.predict(obs)
+    with WorldModelClient(("127.0.0.1", port)) as client:
+        obs = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        pred = client.predict(obs)
 
     stop.set()
     t.join(timeout=1)
-    client.close()
     sock.close()
 
     assert np.allclose(pred, obs + 2)

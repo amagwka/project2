@@ -19,6 +19,12 @@ class UdpClient:
             self.reward_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.reward_socket.settimeout(timeout)
 
+    def __enter__(self) -> "UdpClient":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
     def send_action(self, action_idx: int) -> None:
         msg = str(action_idx).encode()
         self.action_socket.sendto(msg, self.action_addr)

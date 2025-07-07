@@ -9,6 +9,12 @@ class WorldModelClient:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(timeout)
 
+    def __enter__(self) -> "WorldModelClient":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
     def predict(self, obs_sequence: np.ndarray) -> np.ndarray:
         """Send an observation sequence and return the predicted next embedding."""
         self.sock.sendto(obs_sequence.tobytes(), self.addr)
