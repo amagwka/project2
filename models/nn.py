@@ -1,9 +1,6 @@
-import torch, copy
-import torch.nn.functional as F
-import numpy as np
-
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class Actor(nn.Module):
     def __init__(self, state_dim=384, action_dim=7, net_width=256, max_action=1.0, lstm_hidden=256):
