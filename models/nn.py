@@ -29,8 +29,7 @@ class Q_Critic(nn.Module):
         self.lstm = shared_lstm
         self.lstm_hidden = self.lstm.hidden_size
 
-        #self.fc1 = nn.Linear(self.lstm_hidden + action_dim, net_width)
-        self.fc1 = nn.Linear(263, net_width)
+        self.fc1 = nn.Linear(self.lstm_hidden + action_dim, net_width)
         self.fc2 = nn.Linear(net_width, 1)
 
     def forward(self, state_seq, action):
