@@ -24,12 +24,12 @@ env = SocketAppEnv(udp_client=udp, obs_encoder=encoder, start_servers=False)
 
 # Undertale RL via UDP
 
-This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward`.
+This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward` by default. Any module implementing the `BaseIntrinsicReward` interface can be passed via the `intrinsic_reward` parameter for custom curiosity bonuses.
 
 ## Environment Workflow
 * Actions are sent over UDP to a keyboard server.
 * Extrinsic rewards are fetched from another UDP port.
-* Observations are encoded with `LocalObs` and passed into `E3BIntrinsicReward` for novelty bonuses.
+* Observations are encoded with `LocalObs` and passed into an intrinsic reward module for novelty bonuses (defaults to `E3BIntrinsicReward`).
 * Extrinsic and intrinsic rewards are summed for each step.
 
 ## Action and Reward Server
