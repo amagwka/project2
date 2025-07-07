@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -9,9 +10,11 @@ import pytest
 
 try:
     from envs.socket_env import SocketAppEnv
+    from servers.manager import ServerManager
     from utils.intrinsic import BaseIntrinsicReward
 except ModuleNotFoundError:
     SocketAppEnv = None
+    ServerManager = None
     class BaseIntrinsicReward:
         def reset(self):
             pass
@@ -75,6 +78,7 @@ def test_socket_env_basic():
         use_world_model=False,
         udp_client=udp,
         obs_encoder=obs_enc,
+        server_manager=None,
     )
     obs, _ = env.reset()
     assert hasattr(obs, "shape")
@@ -105,6 +109,7 @@ def test_socket_env_custom_intrinsic():
         use_world_model=False,
         udp_client=udp,
         obs_encoder=obs_enc,
+        server_manager=None,
         intrinsic_reward=intrinsic,
     )
     env.reset()
@@ -132,9 +137,47 @@ def test_socket_env_config_intrinsic():
         use_world_model=False,
         udp_client=udp,
         obs_encoder=obs_enc,
+        server_manager=None,
         config=cfg.env,
     )
     env.reset()
     _, reward, _, _, info = env.step(0)
     assert info["intrinsic"] == 1.0
+    env.close()
+
+
+def test_no_server_spawn_when_disabled(monkeypatch):
+    if SocketAppEnv is None:
+        pytest.skip("gymnasium not installed")
+
+    popen_calls = []
+
+    def fake_popen(*args, **kwargs):
+        popen_calls.append(args)
+        class Dummy:
+            def terminate(self):
+                pass
+            def wait(self, timeout=None):
+                pass
+        return Dummy()
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    udp = DummyUdpClient()
+    obs_enc = DummyObsEncoder()
+    mgr = ServerManager()
+    env = SocketAppEnv(
+        max_steps=1,
+        device="cpu",
+        embedding_model=None,
+        combined_server=False,
+        enable_logging=False,
+        start_servers=False,
+        use_world_model=False,
+        udp_client=udp,
+        obs_encoder=obs_enc,
+        server_manager=mgr,
+    )
+
+    assert popen_calls == []
     env.close()

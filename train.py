@@ -9,6 +9,7 @@ from stable_baselines3.common.env_util import make_vec_env
 
 from config import Config
 from envs.socket_env import create_socket_env
+from servers.manager import ServerManager
 from models.nn import Actor, Q_Critic
 from models.ppo import ppo_update
 from utils.rollout import RolloutBufferNoDone, compute_gae
@@ -30,7 +31,8 @@ def run_training(cfg: Config, use_sb3: bool = False, timesteps: int = 5000) -> N
     global paused
 
     if use_sb3:
-        env_fn = lambda: create_socket_env(cfg.env)
+        manager = ServerManager() if cfg.env.start_servers else None
+        env_fn = lambda: create_socket_env(cfg.env, server_manager=manager)
         vec_env = make_vec_env(env_fn, n_envs=1)
         model = SB3PPO(
             "MlpPolicy",
@@ -45,13 +47,16 @@ def run_training(cfg: Config, use_sb3: bool = False, timesteps: int = 5000) -> N
         action, _ = model.predict(obs, deterministic=True)
         print("Learned action:", action)
         vec_env.close()
+        if manager is not None:
+            manager.stop()
         return
 
     device = cfg.training.device
     state_dim = cfg.training.state_dim
     action_dim = cfg.training.action_dim
 
-    env = create_socket_env(cfg.env)
+    manager = ServerManager() if cfg.env.start_servers else None
+    env = create_socket_env(cfg.env, server_manager=manager)
     obs, _ = env.reset()
 
     actor = Actor(state_dim=state_dim, action_dim=action_dim).to(device)

@@ -1,9 +1,11 @@
 from envs.socket_env import create_socket_env
+from servers.manager import ServerManager
 from config import get_config
 
 def main():
     cfg = get_config()
-    env = create_socket_env(cfg.env)
+    manager = ServerManager() if cfg.env.start_servers else None
+    env = create_socket_env(cfg.env, server_manager=manager)
     obs, _ = env.reset()
     print(f"Initial obs shape: {obs.shape}")
     for step in range(1000):
@@ -16,6 +18,8 @@ def main():
         if terminated or truncated:
             break
     env.close()
+    if manager is not None:
+        manager.stop()
 
 
 if __name__ == "__main__":

@@ -1,8 +1,6 @@
 import gymnasium as gym
 import numpy as np
 import socket
-import subprocess
-import sys
 import importlib
 from time import sleep, perf_counter
 from servers.constants import (
@@ -12,6 +10,7 @@ from servers.constants import (
     ARROW_IDX,
     WAIT_IDX,
 )
+from servers.manager import ServerManager
 from typing import Optional, Callable
 from config import EnvConfig
 
@@ -52,6 +51,7 @@ class SocketAppEnv(gym.Env):
         obs_encoder: Optional[ObservationEncoder] = None,
         intrinsic_reward: Optional[BaseIntrinsicReward] = None,
         server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
+        server_manager: Optional[ServerManager] = None,
     ):
 
         super().__init__()
@@ -83,7 +83,7 @@ class SocketAppEnv(gym.Env):
             low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32
         )
 
-        self._server_processes = []
+        self._server_manager = server_manager
         self._logger = None
         self._last_action_time = perf_counter()
 
@@ -107,8 +107,8 @@ class SocketAppEnv(gym.Env):
         if self.start_servers:
             if self._server_launcher is not None:
                 self._server_launcher(self)
-            else:
-                self._launch_servers()
+            elif self._server_manager is not None:
+                self._server_manager.start(self)
 
     def __enter__(self):
         return self
@@ -276,46 +276,11 @@ class SocketAppEnv(gym.Env):
             self.wm_client.close()
         if hasattr(self.obs_encoder, "close"):
             self.obs_encoder.close()
-        for proc in self._server_processes:
-            proc.terminate()
-            proc.wait(timeout=1)
-
-    def _launch_servers(self):
-        """Launch reward/action servers as subprocesses if ports are free."""
-        def port_in_use(addr):
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                s.bind(addr)
-            except OSError:
-                s.close()
-                return True
-            s.close()
-            return False
-
-        if self.combined_server:
-            if not port_in_use(self.action_addr):
-                cmd = [sys.executable, '-m', 'servers.action_server']
-                p = subprocess.Popen(cmd)
-                self._server_processes.append(p)
-        else:
-            if not port_in_use(self.reward_addr):
-                cmd = [sys.executable, '-m', 'servers.reward_server']
-                p = subprocess.Popen(cmd)
-                self._server_processes.append(p)
-
-        if self.use_world_model and not port_in_use(self.wm_addr):
-            cmd = [
-                sys.executable, '-m', 'servers.world_model_server',
-                '--model-path', self.world_model_path,
-                '--model-type', self.world_model_type,
-                '--host', self.wm_addr[0],
-                '--port', str(self.wm_addr[1])
-            ]
-            p = subprocess.Popen(cmd)
-            self._server_processes.append(p)
+        if self._server_manager is not None:
+            self._server_manager.stop()
 
 
-def create_socket_env(cfg: EnvConfig) -> SocketAppEnv:
+def create_socket_env(cfg: EnvConfig, server_manager: Optional[ServerManager] = None) -> SocketAppEnv:
     """Instantiate ``SocketAppEnv`` from an ``EnvConfig``."""
     env_kwargs = asdict(cfg)
     wm = env_kwargs.pop("world_model")
@@ -329,4 +294,5 @@ def create_socket_env(cfg: EnvConfig) -> SocketAppEnv:
     env_kwargs.pop("intrinsic_reward", None)
     env_kwargs.pop("intrinsic_cls", None)
     env_kwargs["config"] = cfg
+    env_kwargs["server_manager"] = server_manager
     return SocketAppEnv(**env_kwargs)
