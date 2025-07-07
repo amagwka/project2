@@ -74,7 +74,6 @@ class SocketAppEnv(gym.Env):
             world_model_path = config.world_model.model_path
             world_model_type = config.world_model.model_type
             world_model_interval = config.world_model.interval_steps
-            world_model_time = getattr(config.world_model, "time_interval", None)  # unused
             ir_config = getattr(config, "intrinsic_reward", None)
             intrinsic_cls_path = getattr(config, "intrinsic_cls", None)
         else:
@@ -105,9 +104,6 @@ class SocketAppEnv(gym.Env):
         self.world_model_path = world_model_path
         self.world_model_type = world_model_type
         self.wm_interval_steps = int(max(1, world_model_interval))
-        # ``world_model_time`` was previously used to throttle requests based on
-        # wall clock.  The reward from the world model is now triggered purely
-        # on step intervals to avoid irregular spacing in the logged values.
         self._server_processes = []
         self._logger = None
         self._last_action_time = perf_counter()

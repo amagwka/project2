@@ -44,7 +44,6 @@ def make_env(name: str) -> Callable[[], gym.Env]:
                 world_model_path=cfg.env.world_model.model_path,
                 world_model_type=cfg.env.world_model.model_type,
                 world_model_interval=cfg.env.world_model.interval_steps,
-                world_model_time=cfg.env.world_model.time_interval,
             )
         return _f
     raise ValueError(f"Unknown env '{name}'")
