@@ -2,6 +2,7 @@ import socket
 import time
 from pynput.keyboard import Controller, Key
 from servers.reward_server import ExternalRewardTracker
+from servers.tracker import RewardTracker
 from servers.constants import (
     ARROW_DELAY,
     WAIT_DELAY,
@@ -34,7 +35,7 @@ def send_action(action_idx):
 
 
 # Unified UDP server
-def start_combined_udp_server(tracker, host="0.0.0.0", port=5005):
+def start_combined_udp_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5005) -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, port))
     print(f"[Combined UDP Server] Listening on {host}:{port}")
