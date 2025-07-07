@@ -24,19 +24,19 @@ env = SocketAppEnv(udp_client=udp, obs_encoder=encoder, start_servers=False)
 
 # Undertale RL via UDP
 
-This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward` by default. Any module implementing the `CuriosityReward` interface can be passed via the `intrinsic_reward` parameter or loaded via the configuration for custom curiosity bonuses.
+This repository implements a reinforcement learning setup that interacts with an external application (e.g. Undertale) over UDP sockets. The main environment is `SocketAppEnv` in `envs/socket_env.py` which sends discrete actions and requests rewards from separate UDP endpoints. Observations are video frames encoded through a DINO model and combined with an intrinsic reward from `E3BIntrinsicReward` by default. Any module implementing the `IntrinsicReward` interface can be passed via the `intrinsic_reward` parameter or loaded via the configuration for custom curiosity bonuses.
 
 ## Environment Workflow
 * Actions are sent over UDP to a keyboard server.
 * Extrinsic rewards are fetched from another UDP port.
 * Observations are encoded with `LocalObs` and passed into an intrinsic reward module for novelty bonuses (defaults to `E3BIntrinsicReward`).
-  Custom modules implementing ``CuriosityReward`` can be configured via ``EnvConfig.intrinsic_reward``.
+  Custom modules implementing ``IntrinsicReward`` can be configured via ``EnvConfig.intrinsic_reward``.
 * Extrinsic and intrinsic rewards are summed for each step.
 
 ### Custom Curiosity Modules
 The environment can dynamically load a curiosity plugin via the
 ``EnvConfig.intrinsic_reward`` settings. Each plugin must implement the
-``CuriosityReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
+``IntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
 See ``examples/custom_curiosity.py`` for a minimal example returning a constant
 bonus.
 

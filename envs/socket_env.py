@@ -18,7 +18,7 @@ from typing import Optional, Callable
 from config import EnvConfig
 
 from utils.observation_encoder import ObservationEncoder
-from utils.curiosity_base import CuriosityReward
+from utils.curiosity_base import CuriosityReward, IntrinsicReward
 from utils.intrinsic import E3BIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
@@ -51,7 +51,7 @@ class SocketAppEnv(gym.Env):
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
-        intrinsic_reward: Optional[CuriosityReward] = None,
+        intrinsic_reward: Optional[IntrinsicReward] = None,
         server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
     ):
 
