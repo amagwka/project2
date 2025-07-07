@@ -45,7 +45,6 @@ class SocketAppEnv(gym.Env):
         world_model_path="lab/scripts/mlp_world_model.pt",
         world_model_type="mlp",
         world_model_interval=5,
-        world_model_time=1.0,  # unused
         config: Optional[EnvConfig] = None,
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,

@@ -39,12 +39,12 @@ def test_bandit_env_ppo():
 
     actor = Actor()
     critic = Critic()
-    opt_a = optim.Adam(actor.parameters(), lr=0.05)
-    opt_c = optim.Adam(critic.parameters(), lr=0.05)
+    opt_a = optim.Adam(actor.parameters(), lr=0.0005)
+    opt_c = optim.Adam(critic.parameters(), lr=0.0005)
     buf = RolloutBufferNoDone(32, state_dim, action_dim, device="cpu")
 
     obs, _ = env.reset()
-    for _ in range(200):
+    for _ in range(2000):
         s = torch.tensor(obs, dtype=torch.float32)
         seq = buf.get_latest_state_seq(s)
         logits = actor(seq)
@@ -64,5 +64,6 @@ def test_bandit_env_ppo():
     with torch.no_grad():
         seq = torch.zeros(1, buf.seq_len, state_dim)
         logits = actor(seq)
+        print("Learned probs:", logits.softmax(-1))
         best = logits.argmax().item()
     assert best == 1

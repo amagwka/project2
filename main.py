@@ -42,7 +42,7 @@ def hotkey_listener() -> None:
 def main() -> None:
     global paused
     parser = argparse.ArgumentParser(description="SocketApp PPO trainer")
-    parser.add_argument("--sb3", action="store_true",
+    parser.add_argument("--sb3", action="store_true",default=False,
                         help="use stable-baselines3 PPO")
     parser.add_argument("--timesteps", type=int, default=5000,
                         help="training timesteps for sb3")
@@ -107,7 +107,6 @@ def main() -> None:
         world_model_path=cfg.env.world_model.model_path,
         world_model_type=cfg.env.world_model.model_type,
         world_model_interval=cfg.env.world_model.interval_steps,
-        world_model_time=cfg.env.world_model.time_interval,
     )
     obs, _ = env.reset()
 

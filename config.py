@@ -21,14 +21,9 @@ class WorldModelConfig:
     """Settings related to the optional world model."""
     host: str = "127.0.0.1"
     port: int = 5007
-    model_path: str = "lab/scripts/mlp_world_model.pt"
-    model_type: str = "mlp"  # "mlp", "gru" or "lstm"
+    model_path: str = "lab/scripts/rnn_lstm.pt"
+    model_type: str = "lstm"  # "mlp", "gru" or "lstm"
     interval_steps: int = 15
-    # ``time_interval`` previously throttled requests based on wall clock.  The
-    # environment now relies solely on ``interval_steps`` so this field is kept
-    # for backward compatibility but is otherwise ignored.
-    time_interval: float = 1.0
-
 
 @dataclass
 class EnvConfig:
