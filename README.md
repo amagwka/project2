@@ -37,7 +37,31 @@ This repository implements a reinforcement learning setup that interacts with an
 The environment can dynamically load a curiosity plugin via the
 ``EnvConfig.intrinsic_reward`` settings. Each plugin must implement the
 ``IntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
-See ``examples/custom_curiosity.py`` for a minimal example returning a constant
+
+Minimal example implementing a constant bonus:
+
+```python
+from utils.curiosity_base import IntrinsicReward
+
+class MyReward(IntrinsicReward):
+    def reset(self) -> None:
+        pass
+
+    def compute(self, observation, env) -> float:
+        return 1.0
+
+# Direct instantiation
+env = SocketAppEnv(intrinsic_reward=MyReward(), start_servers=False)
+
+# Or via configuration
+from config import get_config
+cfg = get_config()
+cfg.env.intrinsic_reward.module_path = "examples.custom_curiosity"
+cfg.env.intrinsic_reward.class_name = "MyReward"
+env = SocketAppEnv(config=cfg.env, start_servers=False)
+```
+
+See ``examples/custom_curiosity.py`` for a complete module returning a constant
 bonus.
 
 ## Action and Reward Server
