@@ -13,7 +13,7 @@ from servers.constants import (
     ARROW_IDX,
     WAIT_IDX,
 )
-from typing import Optional
+from typing import Optional, Callable
 from config import EnvConfig
 
 from utils.observation_encoder import ObservationEncoder
@@ -50,6 +50,7 @@ class SocketAppEnv(gym.Env):
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
+        server_launcher: Optional[Callable[["SocketAppEnv"], None]] = None,
     ):
 
         if config is not None:
@@ -118,8 +119,13 @@ class SocketAppEnv(gym.Env):
             from utils import logger
             self._logger = logger
 
+        self._server_launcher = server_launcher
+
         if self.start_servers:
-            self._launch_servers()
+            if self._server_launcher is not None:
+                self._server_launcher(self)
+            else:
+                self._launch_servers()
 
     def __enter__(self):
         return self
