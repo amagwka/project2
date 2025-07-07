@@ -4,6 +4,7 @@ import h5py
 import torch
 from torchvision import transforms
 from PIL import Image
+import logging
 
 try:
     from transformers import AutoModel
@@ -65,6 +66,7 @@ def process_sequence(seq_dir: Path, model, transform, device: str, hidden_dim: i
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     p = argparse.ArgumentParser(description="Cache DINOv2 embeddings to H5")
     p.add_argument("--image-dir", type=str, required=True, help="Root directory with frame folders")
     p.add_argument("--output", type=str, required=True, help="Output H5 file")
@@ -86,7 +88,7 @@ def main() -> None:
     with h5py.File(args.output, "w") as h5f:
         for seq_dir in sorted(Path(args.image_dir).iterdir()):
             if not seq_dir.is_dir():
-                print("WTF")
+                logging.warning("Skipping non-directory entry: %s", seq_dir)
                 continue
             emb = process_sequence(seq_dir, model, transform, args.device, hidden_dim)
             h5f.create_dataset(seq_dir.name, data=emb.numpy())
