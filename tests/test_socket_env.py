@@ -126,7 +126,7 @@ def test_socket_env_config_intrinsic():
     obs_enc = DummyObsEncoder()
     from config import get_config
     cfg = get_config()
-    cfg.env.intrinsic_name = "examples.custom_curiosity.ConstantCuriosity"
+    cfg.env.intrinsic_names = ["examples.custom_curiosity.ConstantCuriosity"]
     env = SocketAppEnv(
         max_steps=1,
         device="cpu",

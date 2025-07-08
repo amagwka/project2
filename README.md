@@ -33,8 +33,8 @@ This repository implements a reinforcement learning setup that interacts with an
 * Extrinsic and intrinsic rewards are summed for each step.
 
 ## Custom Curiosity Modules
-The environment can dynamically load a curiosity plugin via the
-``EnvConfig.intrinsic_name`` setting. Each plugin must implement the
+The environment can dynamically load one or more curiosity plugins via the
+``EnvConfig.intrinsic_names`` setting. Each plugin must implement the
 ``BaseIntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
 
 Minimal example implementing a constant bonus:
@@ -55,8 +55,17 @@ env = SocketAppEnv(intrinsic_reward=MyReward(), start_servers=False)
 # Or via configuration
 from config import get_config
 cfg = get_config()
-cfg.env.intrinsic_name = "examples.custom_curiosity.MyReward"
+cfg.env.intrinsic_names = ["examples.custom_curiosity.MyReward"]
 env = SocketAppEnv(config=cfg.env, start_servers=False)
+```
+
+To combine multiple rewards simply list several names:
+
+```python
+cfg.env.intrinsic_names = [
+    "examples.custom_curiosity.MyReward",
+    "E3BIntrinsicReward",
+]
 ```
 
 See ``examples/custom_curiosity.py`` for a complete module returning a constant

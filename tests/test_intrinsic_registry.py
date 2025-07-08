@@ -88,7 +88,7 @@ def test_env_builds_reward_from_registry():
         server_manager=None,
         config=None,
         intrinsic_reward=None,
-        intrinsic_name="RegReward",
+        intrinsic_names=["RegReward"],
     )
     env.reset()
     _, reward, _, _, info = env.step(0)
