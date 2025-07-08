@@ -96,6 +96,29 @@ def test_env_builds_reward_from_registry():
     env.close()
 
 
+def test_invalid_intrinsic_name_errors():
+    if SocketAppEnv is None:
+        pytest.skip("gymnasium not installed")
+
+    udp = DummyUdpClient(reward=1.0)
+    obs_enc = DummyObsEncoder()
+
+    with pytest.raises(ValueError):
+        SocketAppEnv(
+            max_steps=1,
+            device="cpu",
+            embedding_model=None,
+            combined_server=False,
+            enable_logging=False,
+            start_servers=False,
+            use_world_model=False,
+            udp_client=udp,
+            obs_encoder=obs_enc,
+            server_manager=None,
+            intrinsic_names=["does.not.Exist"],
+        )
+
+
 def test_composite_intrinsic_reward():
     class R1(BaseIntrinsicReward):
         def reset(self):

@@ -226,10 +226,7 @@ class SocketAppEnv(gym.Env):
         self.wm_interval_steps = int(max(1, config.world_model.interval_steps))
 
         names = getattr(config, "intrinsic_names", None)
-        if names is None:
-            name = getattr(config, "intrinsic_name", None)
-            names = [name] if name is not None else []
-        return list(names)
+        return list(names) if names is not None else []
 
     def _init_udp_clients(
         self,
@@ -273,20 +270,21 @@ class SocketAppEnv(gym.Env):
             try:
                 from utils.intrinsic_registry import get_reward
                 cls = get_reward(name)
-            except Exception:
+            except KeyError:
                 cls = None
-            if cls is not None:
-                self.intrinsic_rewards.append(self._instantiate_intrinsic(cls))
-                continue
-            if "." in name:
+
+            if cls is None and "." in name:
                 try:
                     mod_name, cls_name = name.rsplit(".", 1)
                     module = importlib.import_module(mod_name)
                     cls = getattr(module, cls_name)
-                    self.intrinsic_rewards.append(self._instantiate_intrinsic(cls))
-                    continue
                 except Exception:
-                    pass
+                    cls = None
+
+            if cls is None:
+                raise ValueError(f"Could not load intrinsic reward class '{name}'")
+
+            self.intrinsic_rewards.append(self._instantiate_intrinsic(cls))
 
         if not self.intrinsic_rewards:
             self.intrinsic_rewards.append(
@@ -326,7 +324,6 @@ def create_socket_env(cfg: EnvConfig, server_manager: Optional[ServerManager] = 
         "world_model_type": wm["model_type"],
         "world_model_interval": wm["interval_steps"],
     })
-    env_kwargs.pop("intrinsic_name", None)
     env_kwargs.pop("intrinsic_names", None)
     env_kwargs["config"] = cfg
     env_kwargs["server_manager"] = server_manager
