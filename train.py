@@ -1,4 +1,5 @@
 import time
+from typing import Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -8,7 +9,7 @@ from stable_baselines3 import PPO as SB3PPO
 from stable_baselines3.common.env_util import make_vec_env
 
 from config import Config
-from envs.socket_env import create_socket_env
+from envs.socket_env import create_socket_env, SocketAppEnv
 from servers.manager import ServerManager
 from models.nn import Actor, Q_Critic
 from models.ppo import ppo_update
@@ -26,38 +27,39 @@ def toggle_pause() -> None:
     print(f"[Pause toggled] Paused = {paused}")
 
 
-def run_training(cfg: Config, use_sb3: bool = False, timesteps: int = 5000) -> None:
-    """Execute PPO training."""
-    global paused
+def create_server_manager(cfg: Config) -> Optional[ServerManager]:
+    """Return a ``ServerManager`` if the config requests one."""
+    return ServerManager() if cfg.env.start_servers else None
 
-    if use_sb3:
-        manager = ServerManager() if cfg.env.start_servers else None
-        env_fn = lambda: create_socket_env(cfg.env, server_manager=manager)
-        vec_env = make_vec_env(env_fn, n_envs=1)
-        model = SB3PPO(
-            "MlpPolicy",
-            vec_env,
-            n_steps=cfg.training.rollout_len,
-            batch_size=cfg.training.rollout_len,
-            learning_rate=cfg.training.learning_rate,
-            verbose=1,
-        )
-        model.learn(total_timesteps=timesteps)
-        obs = vec_env.reset()
-        action, _ = model.predict(obs, deterministic=True)
-        print("Learned action:", action)
-        vec_env.close()
-        if manager is not None:
-            manager.stop()
-        return
 
+def create_environment(cfg: Config, manager: Optional[ServerManager]) -> SocketAppEnv:
+    """Instantiate ``SocketAppEnv`` using ``manager``."""
+    return create_socket_env(cfg.env, server_manager=manager)
+
+
+def create_vec_env(cfg: Config, manager: Optional[ServerManager]):
+    """Create a vectorized environment for Stable Baselines."""
+    env_fn = lambda: create_socket_env(cfg.env, server_manager=manager)
+    return make_vec_env(env_fn, n_envs=1)
+
+
+def setup_sb3_model(cfg: Config, vec_env) -> SB3PPO:
+    """Initialize the Stable Baselines3 PPO model."""
+    return SB3PPO(
+        "MlpPolicy",
+        vec_env,
+        n_steps=cfg.training.rollout_len,
+        batch_size=cfg.training.rollout_len,
+        learning_rate=cfg.training.learning_rate,
+        verbose=1,
+    )
+
+
+def setup_models(cfg: Config) -> Tuple[Actor, Q_Critic, optim.Optimizer, optim.Optimizer, RolloutBufferNoDone]:
+    """Create actor/critic networks, optimizers and rollout buffer."""
     device = cfg.training.device
     state_dim = cfg.training.state_dim
     action_dim = cfg.training.action_dim
-
-    manager = ServerManager() if cfg.env.start_servers else None
-    env = create_socket_env(cfg.env, server_manager=manager)
-    obs, _ = env.reset()
 
     actor = Actor(state_dim=state_dim, action_dim=action_dim).to(device)
     critic = Q_Critic(shared_lstm=actor.lstm, action_dim=action_dim).to(device)
@@ -69,6 +71,35 @@ def run_training(cfg: Config, use_sb3: bool = False, timesteps: int = 5000) -> N
         action_dim,
         "cpu",
     )
+    return actor, critic, optim_actor, optim_critic, buffer
+
+
+def run_sb3_training(cfg: Config, timesteps: int = 5000, manager: Optional[ServerManager] = None) -> None:
+    """Run PPO training using Stable Baselines3."""
+    vec_env = create_vec_env(cfg, manager)
+    model = setup_sb3_model(cfg, vec_env)
+    model.learn(total_timesteps=timesteps)
+    obs = vec_env.reset()
+    action, _ = model.predict(obs, deterministic=True)
+    print("Learned action:", action)
+    vec_env.close()
+
+
+def train_loop(
+    cfg: Config,
+    env: SocketAppEnv,
+    actor: Actor,
+    critic: Q_Critic,
+    optim_actor: optim.Optimizer,
+    optim_critic: optim.Optimizer,
+    buffer: RolloutBufferNoDone,
+) -> None:
+    """Main training loop for the custom PPO implementation."""
+    global paused
+
+    device = cfg.training.device
+    action_dim = cfg.training.action_dim
+    obs, _ = env.reset()
 
     step_count = 0
     print("[Started in PAUSED mode] Press F9 to toggle")
@@ -116,4 +147,19 @@ def run_training(cfg: Config, use_sb3: bool = False, timesteps: int = 5000) -> N
                 step_count,
             )
             print(f"[PPO Update] Step {step_count}")
+
+
+def run_training(cfg: Config, use_sb3: bool = False, timesteps: int = 5000) -> None:
+    """Execute PPO training using either SB3 or the custom implementation."""
+    manager = create_server_manager(cfg)
+
+    if use_sb3:
+        run_sb3_training(cfg, timesteps=timesteps, manager=manager)
+        if manager is not None:
+            manager.stop()
+        return
+
+    env = create_environment(cfg, manager)
+    actor, critic, optim_actor, optim_critic, buffer = setup_models(cfg)
+    train_loop(cfg, env, actor, critic, optim_actor, optim_critic, buffer)
 

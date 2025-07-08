@@ -1,7 +1,14 @@
 import argparse
 
 from config import get_config
-from train import run_training, toggle_pause
+from train import (
+    toggle_pause,
+    create_server_manager,
+    create_environment,
+    setup_models,
+    run_sb3_training,
+    train_loop,
+)
 from utils.hotkeys import start_listener
 
 
@@ -22,9 +29,18 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = get_config()
-    if not args.sb3:
-        start_listener(toggle_pause)
-    run_training(cfg, use_sb3=args.sb3, timesteps=args.timesteps)
+    manager = create_server_manager(cfg)
+
+    if args.sb3:
+        run_sb3_training(cfg, timesteps=args.timesteps, manager=manager)
+        if manager is not None:
+            manager.stop()
+        return
+
+    env = create_environment(cfg, manager)
+    actor, critic, opt_actor, opt_critic, buffer = setup_models(cfg)
+    start_listener(toggle_pause)
+    train_loop(cfg, env, actor, critic, opt_actor, opt_critic, buffer)
 
 
 if __name__ == "__main__":
