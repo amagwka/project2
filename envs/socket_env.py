@@ -255,9 +255,12 @@ class SocketAppEnv(gym.Env):
 
         cls = None
         if intrinsic_name is not None:
-            from utils.intrinsic_registry import INTRINSIC_REWARDS
+            from utils.intrinsic_registry import get_reward
 
-            cls = INTRINSIC_REWARDS.get(intrinsic_name)
+            try:
+                cls = get_reward(intrinsic_name)
+            except KeyError:
+                cls = None
             if cls is not None:
                 self.intrinsic = self._instantiate_intrinsic(cls)
                 return
