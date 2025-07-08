@@ -1,8 +1,8 @@
 """Minimal custom curiosity module returning a constant bonus."""
 
-from utils.curiosity_base import IntrinsicReward
+from utils.intrinsic import BaseIntrinsicReward
 
-class ConstantCuriosity(IntrinsicReward):
+class ConstantCuriosity(BaseIntrinsicReward):
     """Simple curiosity module returning a constant bonus."""
 
     def __init__(self, value: float = 1.0):
