@@ -34,7 +34,7 @@ This repository implements a reinforcement learning setup that interacts with an
 
 ## Custom Curiosity Modules
 The environment can dynamically load a curiosity plugin via the
-``EnvConfig.intrinsic_cls`` setting. Each plugin must implement the
+``EnvConfig.intrinsic_name`` setting. Each plugin must implement the
 ``BaseIntrinsicReward`` interface which defines ``reset()`` and ``compute(obs, env)``.
 
 Minimal example implementing a constant bonus:
@@ -55,7 +55,7 @@ env = SocketAppEnv(intrinsic_reward=MyReward(), start_servers=False)
 # Or via configuration
 from config import get_config
 cfg = get_config()
-cfg.env.intrinsic_cls = "examples.custom_curiosity.MyReward"
+cfg.env.intrinsic_name = "examples.custom_curiosity.MyReward"
 env = SocketAppEnv(config=cfg.env, start_servers=False)
 ```
 
