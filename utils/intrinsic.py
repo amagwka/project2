@@ -1,9 +1,19 @@
+from abc import ABC, abstractmethod
+import numpy as np
+import gymnasium as gym
 import torch
-from .curiosity_base import IntrinsicReward
 
 
-class BaseIntrinsicReward(IntrinsicReward):
+class BaseIntrinsicReward(ABC):
     """Abstract base class for intrinsic reward modules."""
+
+    @abstractmethod
+    def reset(self) -> None:
+        """Reset the internal state if any."""
+
+    @abstractmethod
+    def compute(self, observation: np.ndarray, env: gym.Env) -> float:
+        """Return intrinsic reward for an observation in the given environment."""
 
 class E3BIntrinsicReward(BaseIntrinsicReward):
     def __init__(self, latent_dim=384, decay=0.9995, ridge=0.1, device="cpu"):
