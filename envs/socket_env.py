@@ -51,6 +51,8 @@ class SocketAppEnv(gym.Env):
         world_model_client: Optional[WorldModelClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
         intrinsic_reward: Optional[BaseIntrinsicReward] = None,
+        intrinsic_rewards: Optional[list[BaseIntrinsicReward]] = None,
+        intrinsic_names: Optional[list[str]] = None,
         server_launcher: Optional[Callable[["SocketAppEnv"], Optional[UdpServer]]] = None,
         server_manager: Optional[ServerManager] = None,
     ):
@@ -77,7 +79,9 @@ class SocketAppEnv(gym.Env):
         self.wm_interval_steps = int(max(1, world_model_interval))
 
         # Override above attributes from the config if provided
-        intrinsic_name = self._init_from_config(config)
+        cfg_names = self._init_from_config(config)
+        if intrinsic_names is None:
+            intrinsic_names = cfg_names
 
         self.action_space = gym.spaces.Discrete(self.action_dim)
         self.observation_space = gym.spaces.Box(
@@ -97,7 +101,7 @@ class SocketAppEnv(gym.Env):
             device=self.device,
             embedding_dim=self.state_dim,
         )
-        self._init_intrinsic(intrinsic_reward, intrinsic_name)
+        self._init_intrinsic(intrinsic_reward, intrinsic_rewards, intrinsic_names)
 
         if self.enable_logging:
             from utils import logger
@@ -127,7 +131,8 @@ class SocketAppEnv(gym.Env):
     def reset(self, seed=None, options=None):
         self.step_count = 0
         self._send_reset()
-        self.intrinsic.reset()
+        for ir in self.intrinsic_rewards:
+            ir.reset()
         self.obs_history.clear()
         emb_np = self.obs_encoder.get_embedding()
         return emb_np.astype(np.float32), {}
@@ -150,7 +155,9 @@ class SocketAppEnv(gym.Env):
 
         obs_np = self.obs_encoder.get_embedding()
         extrinsic = self._get_reward()
-        intrinsic = self.intrinsic.compute(obs_np, self)
+        intrinsic = float(
+            sum(ir.compute(obs_np, self) for ir in self.intrinsic_rewards)
+        )
         model_bonus = 0.0
         self.obs_history.append(obs_np.copy())
         if len(self.obs_history) > 30:
@@ -200,7 +207,7 @@ class SocketAppEnv(gym.Env):
     def _init_from_config(self, config: Optional[EnvConfig]):
         """Populate attributes from a configuration object."""
         if config is None:
-            return None
+            return []
 
         self.max_steps = config.max_steps
         self.device = config.device
@@ -218,8 +225,11 @@ class SocketAppEnv(gym.Env):
         self.world_model_type = config.world_model.model_type
         self.wm_interval_steps = int(max(1, config.world_model.interval_steps))
 
-        intrinsic_name = getattr(config, "intrinsic_name", None)
-        return intrinsic_name
+        names = getattr(config, "intrinsic_names", None)
+        if names is None:
+            name = getattr(config, "intrinsic_name", None)
+            names = [name] if name is not None else []
+        return list(names)
 
     def _init_udp_clients(
         self,
@@ -246,41 +256,46 @@ class SocketAppEnv(gym.Env):
     def _init_intrinsic(
         self,
         intrinsic_reward: Optional[BaseIntrinsicReward],
-        intrinsic_name: Optional[str],
+        intrinsic_rewards: Optional[list[BaseIntrinsicReward]],
+        intrinsic_names: list[str],
     ) -> None:
         """Instantiate the intrinsic reward helper."""
+        self.intrinsic_rewards: list[BaseIntrinsicReward] = []
+
         if intrinsic_reward is not None:
-            self.intrinsic = intrinsic_reward
-            return
+            self.intrinsic_rewards.append(intrinsic_reward)
 
-        cls = None
-        if intrinsic_name is not None:
-            from utils.intrinsic_registry import get_reward
+        if intrinsic_rewards:
+            self.intrinsic_rewards.extend(intrinsic_rewards)
 
+        for name in intrinsic_names:
+            cls = None
             try:
-                cls = get_reward(intrinsic_name)
-            except KeyError:
+                from utils.intrinsic_registry import get_reward
+                cls = get_reward(name)
+            except Exception:
                 cls = None
             if cls is not None:
-                self.intrinsic = self._instantiate_intrinsic(cls)
-                return
-
-            if "." in intrinsic_name:
+                self.intrinsic_rewards.append(self._instantiate_intrinsic(cls))
+                continue
+            if "." in name:
                 try:
-                    mod_name, cls_name = intrinsic_name.rsplit(".", 1)
+                    mod_name, cls_name = name.rsplit(".", 1)
                     module = importlib.import_module(mod_name)
                     cls = getattr(module, cls_name)
-                    self.intrinsic = self._instantiate_intrinsic(cls)
-                    return
+                    self.intrinsic_rewards.append(self._instantiate_intrinsic(cls))
+                    continue
                 except Exception:
-                    cls = None
+                    pass
 
-        if cls is None:
-            self.intrinsic = E3BIntrinsicReward(
-                latent_dim=self.state_dim,
-                decay=1.0,
-                ridge=0.1,
-                device=self.device,
+        if not self.intrinsic_rewards:
+            self.intrinsic_rewards.append(
+                E3BIntrinsicReward(
+                    latent_dim=self.state_dim,
+                    decay=1.0,
+                    ridge=0.1,
+                    device=self.device,
+                )
             )
 
     def render(self):
@@ -312,6 +327,7 @@ def create_socket_env(cfg: EnvConfig, server_manager: Optional[ServerManager] = 
         "world_model_interval": wm["interval_steps"],
     })
     env_kwargs.pop("intrinsic_name", None)
+    env_kwargs.pop("intrinsic_names", None)
     env_kwargs["config"] = cfg
     env_kwargs["server_manager"] = server_manager
     return SocketAppEnv(**env_kwargs)

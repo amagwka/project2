@@ -2,7 +2,7 @@
 # Contains all tunable parameters used across modules.
 
 from dataclasses import dataclass, field
-from typing import Dict, Set
+from typing import Dict, Set, List
 import torch
 
 
@@ -43,7 +43,7 @@ class EnvConfig:
     enable_logging: bool = True
     use_world_model: bool = True
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
-    intrinsic_name: str = "E3BIntrinsicReward"
+    intrinsic_names: list[str] = field(default_factory=lambda: ["E3BIntrinsicReward"])
 
 
 @dataclass
