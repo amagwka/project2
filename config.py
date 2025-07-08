@@ -27,12 +27,6 @@ class WorldModelConfig:
 
 
 @dataclass
-class IntrinsicRewardConfig:
-    """Location of the curiosity reward module."""
-    module_path: str = "utils.intrinsic"
-    class_name: str = "E3BIntrinsicReward"
-
-@dataclass
 class EnvConfig:
     """Default parameters for ``SocketAppEnv``."""
     max_steps: int = int(1e10)
@@ -49,8 +43,7 @@ class EnvConfig:
     enable_logging: bool = True
     use_world_model: bool = True
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
-    intrinsic_reward: IntrinsicRewardConfig = field(default_factory=IntrinsicRewardConfig)
-    intrinsic_cls: str = "utils.intrinsic.E3BIntrinsicReward"
+    intrinsic_name: str = "E3BIntrinsicReward"
 
 
 @dataclass
