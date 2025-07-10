@@ -21,6 +21,7 @@ from utils.intrinsic import E3BIntrinsicReward, BaseIntrinsicReward
 from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
+from utils.intrinsic_client import IntrinsicClient
 from dataclasses import asdict
 
 class SocketAppEnv(gym.Env):
@@ -46,9 +47,14 @@ class SocketAppEnv(gym.Env):
         world_model_path="lab/scripts/mlp_world_model.pt",
         world_model_type="mlp",
         world_model_interval=5,
+        use_intrinsic_server=False,
+        intrinsic_host="127.0.0.1",
+        intrinsic_port=5008,
+        intrinsic_reward_name="E3BIntrinsicReward",
         config: Optional[EnvConfig] = None,
         udp_client: Optional[UdpClient] = None,
         world_model_client: Optional[WorldModelClient] = None,
+        intrinsic_client: Optional[IntrinsicClient] = None,
         obs_encoder: Optional[ObservationEncoder] = None,
         intrinsic_reward: Optional[BaseIntrinsicReward] = None,
         intrinsic_rewards: Optional[list[BaseIntrinsicReward]] = None,
@@ -77,6 +83,9 @@ class SocketAppEnv(gym.Env):
         self.world_model_path = world_model_path
         self.world_model_type = world_model_type
         self.wm_interval_steps = int(max(1, world_model_interval))
+        self.use_intrinsic_server = use_intrinsic_server
+        self.intrinsic_addr = (intrinsic_host, intrinsic_port)
+        self.intrinsic_reward_name = intrinsic_reward_name
 
         # Override above attributes from the config if provided
         cfg_names = self._init_from_config(config)
@@ -92,7 +101,7 @@ class SocketAppEnv(gym.Env):
         self._logger = None
         self._last_action_time = perf_counter()
 
-        self._init_udp_clients(udp_client, world_model_client)
+        self._init_udp_clients(udp_client, world_model_client, intrinsic_client)
         self.obs_history = []
 
         self.obs_encoder = obs_encoder or ObservationEncoder(
@@ -131,6 +140,8 @@ class SocketAppEnv(gym.Env):
     def reset(self, seed=None, options=None):
         self.step_count = 0
         self._send_reset()
+        if self.use_intrinsic_server and self.intrinsic_client is not None:
+            self.intrinsic_client.send_reset()
         for ir in self.intrinsic_rewards:
             ir.reset()
         self.obs_history.clear()
@@ -155,9 +166,15 @@ class SocketAppEnv(gym.Env):
 
         obs_np = self.obs_encoder.get_embedding()
         extrinsic = self._get_reward()
-        intrinsic = float(
-            sum(ir.compute(obs_np, self) for ir in self.intrinsic_rewards)
-        )
+        if self.use_intrinsic_server and self.intrinsic_client is not None:
+            try:
+                intrinsic = self.intrinsic_client.compute(obs_np)
+            except Exception:
+                intrinsic = 0.0
+        else:
+            intrinsic = float(
+                sum(ir.compute(obs_np, self) for ir in self.intrinsic_rewards)
+            )
         model_bonus = 0.0
         self.obs_history.append(obs_np.copy())
         if len(self.obs_history) > 30:
@@ -224,6 +241,13 @@ class SocketAppEnv(gym.Env):
         self.world_model_path = config.world_model.model_path
         self.world_model_type = config.world_model.model_type
         self.wm_interval_steps = int(max(1, config.world_model.interval_steps))
+        self.use_intrinsic_server = getattr(config, "use_intrinsic_server", False)
+        if hasattr(config, "intrinsic_server"):
+            self.intrinsic_addr = (
+                config.intrinsic_server.host,
+                config.intrinsic_server.port,
+            )
+            self.intrinsic_reward_name = config.intrinsic_server.reward_name
 
         names = getattr(config, "intrinsic_names", None)
         return list(names) if names is not None else []
@@ -232,6 +256,7 @@ class SocketAppEnv(gym.Env):
         self,
         udp_client: Optional[UdpClient],
         world_model_client: Optional[WorldModelClient],
+        intrinsic_client: Optional[IntrinsicClient] = None,
     ) -> None:
         """Initialize UDP clients used by the environment."""
         self.udp_client = udp_client or UdpClient(
@@ -241,6 +266,11 @@ class SocketAppEnv(gym.Env):
             self.wm_client = world_model_client or WorldModelClient(self.wm_addr)
         else:
             self.wm_client = None
+
+        if self.use_intrinsic_server:
+            self.intrinsic_client = intrinsic_client or IntrinsicClient(self.intrinsic_addr)
+        else:
+            self.intrinsic_client = None
 
     def _instantiate_intrinsic(self, cls):
         """Instantiate ``cls`` with ``latent_dim``/``device`` if possible."""
@@ -258,6 +288,9 @@ class SocketAppEnv(gym.Env):
     ) -> None:
         """Instantiate the intrinsic reward helper."""
         self.intrinsic_rewards: list[BaseIntrinsicReward] = []
+
+        if self.use_intrinsic_server:
+            return
 
         if intrinsic_reward is not None:
             self.intrinsic_rewards.append(intrinsic_reward)
@@ -303,6 +336,8 @@ class SocketAppEnv(gym.Env):
         self.udp_client.close()
         if self.wm_client is not None:
             self.wm_client.close()
+        if self.intrinsic_client is not None:
+            self.intrinsic_client.close()
         if hasattr(self.obs_encoder, "close"):
             self.obs_encoder.close()
         if self._server_manager is not None:
@@ -317,12 +352,16 @@ def create_socket_env(cfg: EnvConfig, server_manager: Optional[ServerManager] = 
     """Instantiate ``SocketAppEnv`` from an ``EnvConfig``."""
     env_kwargs = asdict(cfg)
     wm = env_kwargs.pop("world_model")
+    intr = env_kwargs.pop("intrinsic_server")
     env_kwargs.update({
         "world_model_host": wm["host"],
         "world_model_port": wm["port"],
         "world_model_path": wm["model_path"],
         "world_model_type": wm["model_type"],
         "world_model_interval": wm["interval_steps"],
+        "intrinsic_host": intr["host"],
+        "intrinsic_port": intr["port"],
+        "intrinsic_reward_name": intr["reward_name"],
     })
     env_kwargs.pop("intrinsic_names", None)
     env_kwargs["config"] = cfg
