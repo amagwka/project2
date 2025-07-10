@@ -1,6 +1,7 @@
 from typing import Dict, Type, List
 
 from .intrinsic import BaseIntrinsicReward, E3BIntrinsicReward
+from .icm import ICMIntrinsicReward
 
 # Registry mapping names to intrinsic reward classes
 INTRINSIC_REWARDS: Dict[str, Type[BaseIntrinsicReward]] = {}
@@ -50,6 +51,7 @@ class CompositeIntrinsicReward(BaseIntrinsicReward):
 # Built-in registrations
 register_intrinsic("E3BIntrinsicReward", E3BIntrinsicReward)
 register_intrinsic("CompositeIntrinsicReward", CompositeIntrinsicReward)
+register_intrinsic("ICMIntrinsicReward", ICMIntrinsicReward)
 
 # Optionally register example curiosity modules
 try:

@@ -68,6 +68,7 @@ class SocketAppEnv(gym.Env):
         self.max_steps = max_steps
         self.device = device
         self.step_count = 0
+        self.last_action: int | None = None
         self.action_dim = action_dim
         self.state_dim = state_dim
 
@@ -139,6 +140,7 @@ class SocketAppEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         self.step_count = 0
+        self.last_action = None
         self._send_reset()
         if self.use_intrinsic_server and self.intrinsic_client is not None:
             self.intrinsic_client.send_reset()
@@ -150,6 +152,7 @@ class SocketAppEnv(gym.Env):
 
     def step(self, action):
         self.step_count += 1
+        self.last_action = action
         now = perf_counter()
         elapsed = now - self._last_action_time
         delay = 0.0
@@ -168,7 +171,7 @@ class SocketAppEnv(gym.Env):
         extrinsic = self._get_reward()
         if self.use_intrinsic_server and self.intrinsic_client is not None:
             try:
-                intrinsic = self.intrinsic_client.compute(obs_np)
+                intrinsic = self.intrinsic_client.compute(obs_np, action)
             except Exception:
                 intrinsic = 0.0
         else:
