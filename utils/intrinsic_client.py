@@ -17,8 +17,11 @@ class IntrinsicClient:
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
-    def compute(self, obs: np.ndarray) -> float:
-        self.sock.sendto(obs.astype(np.float32).tobytes(), self.addr)
+    def compute(self, obs: np.ndarray, action: int | None = None) -> float:
+        arr = obs.astype(np.float32)
+        if action is not None:
+            arr = np.concatenate((np.array([action], dtype=np.float32), arr))
+        self.sock.sendto(arr.tobytes(), self.addr)
         data, _ = self.sock.recvfrom(64)
         return float(data.decode().strip())
 
