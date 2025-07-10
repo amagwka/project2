@@ -44,6 +44,18 @@ class ServerManager:
             p = subprocess.Popen(cmd)
             self._processes.append(p)
 
+        if env.use_intrinsic_server and not self._port_in_use(env.intrinsic_addr):
+            cmd = [
+                sys.executable, '-m', 'servers.intrinsic_server',
+                '--name', env.intrinsic_reward_name,
+                '--host', env.intrinsic_addr[0],
+                '--port', str(env.intrinsic_addr[1]),
+                '--latent-dim', str(env.state_dim),
+                '--device', env.device,
+            ]
+            p = subprocess.Popen(cmd)
+            self._processes.append(p)
+
     def stop(self) -> None:
         """Terminate all started server processes."""
         for proc in self._processes:

@@ -27,6 +27,14 @@ class WorldModelConfig:
 
 
 @dataclass
+class IntrinsicServerConfig:
+    """Settings for the optional intrinsic reward server."""
+    host: str = "127.0.0.1"
+    port: int = 5008
+    reward_name: str = "E3BIntrinsicReward"
+
+
+@dataclass
 class EnvConfig:
     """Default parameters for ``SocketAppEnv``."""
     max_steps: int = int(1e10)
@@ -42,7 +50,9 @@ class EnvConfig:
     start_servers: bool = True
     enable_logging: bool = True
     use_world_model: bool = True
+    use_intrinsic_server: bool = False
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
+    intrinsic_server: IntrinsicServerConfig = field(default_factory=IntrinsicServerConfig)
     intrinsic_names: list[str] = field(default_factory=lambda: ["E3BIntrinsicReward"])
 
 

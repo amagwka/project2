@@ -2,6 +2,7 @@
 
 from .base import UdpServer
 from .reward_server import ExternalRewardTracker
+from .intrinsic_server import IntrinsicServer, start_udp_intrinsic_server
 
 try:
     from examples.constant_tracker import ConstantRewardTracker
@@ -13,5 +14,11 @@ REWARD_TRACKERS = {"external": ExternalRewardTracker}
 if ConstantRewardTracker is not None:
     REWARD_TRACKERS["constant"] = ConstantRewardTracker
 
-__all__ = ["UdpServer", "REWARD_TRACKERS", "ExternalRewardTracker"]
+__all__ = [
+    "UdpServer",
+    "REWARD_TRACKERS",
+    "ExternalRewardTracker",
+    "IntrinsicServer",
+    "start_udp_intrinsic_server",
+]
 

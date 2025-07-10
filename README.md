@@ -82,6 +82,10 @@ understands the `GET` and `RESET` commands and replies with the computed reward
 or ``OK`` respectively.  Run ``python -m servers.action_server`` to launch the
 combined server.
 
+`servers/intrinsic_server.py` exposes `start_udp_intrinsic_server` which hosts a
+single curiosity module over UDP. Pass `--name` with any registered reward class
+to run it as a standalone process.
+
 `servers/action_server.py` exposes `start_combined_udp_server` which accepts any
 `RewardTracker` implementation. The default tracker is `ExternalRewardTracker`
 from `servers/reward_server.py`. Custom plugins can subclass
@@ -121,15 +125,20 @@ packages pinned in `requirements.txt`.
    the world model server, which in turn divides its predictions by ten
    before replying.
 
+ ```bash
+  python servers/world_model_server.py
+  ```
+3. (Optional) start the intrinsic reward server to offload curiosity
+   computation:
    ```bash
-   python servers/world_model_server.py
+   python -m servers.intrinsic_server --name E3BIntrinsicReward
    ```
-3. Launch the training script:
+4. Launch the training script:
    ```bash
    python main.py [--sb3] [--timesteps N]
    ```
    When running without `--sb3`, press **F9** to pause or resume training.
-4. Run a quick random-action demo to inspect rewards:
+5. Run a quick random-action demo to inspect rewards:
    ```bash
    python examples/random_agent.py
    ```
