@@ -36,7 +36,7 @@ class IntrinsicServerConfig:
 
 @dataclass
 class EnvConfig:
-    """Default parameters for ``SocketAppEnv``."""
+    """Default parameters for ``NatsAppEnv``."""
     max_steps: int = int(1e10)
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     action_dim: int = 7
