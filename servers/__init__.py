@@ -6,6 +6,7 @@ from .world_model_reward_server import WorldModelRewardServer
 from .external_reward_server import ExternalRewardServer
 from .action_executor_server import ActionExecutorServer
 from .orchestrator import Orchestrator
+from .manager import ServerManager
 
 REWARD_TRACKERS = {}
 
@@ -17,6 +18,7 @@ __all__ = [
     "ExternalRewardServer",
     "ActionExecutorServer",
     "Orchestrator",
+    "ServerManager",
     "REWARD_TRACKERS",
 ]
 
