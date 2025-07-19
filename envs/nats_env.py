@@ -3,16 +3,17 @@ import numpy as np
 import importlib
 import threading
 from time import sleep, perf_counter
-from servers.constants import (
-    ARROW_DELAY,
-    WAIT_DELAY,
-    NON_ARROW_DELAY,
-    ARROW_IDX,
-    WAIT_IDX,
-)
 from servers.manager import ServerManager
 from typing import Optional, Callable
-from config import EnvConfig
+from config import EnvConfig, get_config
+
+# Load default action-related constants from the global configuration
+_DEFAULT_CFG = get_config().action_server
+ARROW_DELAY = _DEFAULT_CFG.arrow_delay
+WAIT_DELAY = _DEFAULT_CFG.wait_delay
+NON_ARROW_DELAY = _DEFAULT_CFG.non_arrow_delay
+ARROW_IDX = _DEFAULT_CFG.arrow_idx
+WAIT_IDX = _DEFAULT_CFG.wait_idx
 
 from utils.observation_encoder import ObservationEncoder
 from utils.intrinsic import E3BIntrinsicReward, BaseIntrinsicReward
