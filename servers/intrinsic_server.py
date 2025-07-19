@@ -3,6 +3,7 @@ import importlib
 import numpy as np
 from utils.intrinsic_registry import get_reward
 from intrinsic_servers.base import BaseUDPIntrinsicServer, IntrinsicInput
+from servers.nats_base import NatsServer
 
 
 class IntrinsicServer(BaseUDPIntrinsicServer):
@@ -34,9 +35,37 @@ class IntrinsicServer(BaseUDPIntrinsicServer):
         return float(self.reward.compute(np.asarray(inp.observation), None))
 
 
+class NatsIntrinsicServer(NatsServer):
+    """NATS server wrapping an intrinsic reward module."""
+
+    def __init__(self, reward_name: str, subject: str = "intrinsic", *, latent_dim: int = 384, device: str = "cpu", url: str = "nats://127.0.0.1:4222"):
+        self.inner = IntrinsicServer(reward_name, host="0.0.0.0", port=0, latent_dim=latent_dim, device=device)
+        super().__init__(subject, url)
+
+    async def handle(self, data: bytes) -> bytes | None:
+        if data == b"RESET":
+            self.inner.reset()
+            return b"OK"
+        val = self.inner.compute(IntrinsicInput(observation=np.frombuffer(data, dtype=np.float32)))
+        return f"{val:.6f}".encode()
+
+
 def start_udp_intrinsic_server(reward_name: str, host: str = "0.0.0.0", port: int = 5008, latent_dim: int = 384, device: str = "cpu") -> None:
     """Convenience helper for ``IntrinsicServer``."""
     server = IntrinsicServer(reward_name, host=host, port=port, latent_dim=latent_dim, device=device)
+    server.serve()
+
+
+def start_nats_intrinsic_server(reward_name: str, subject: str = "intrinsic", *, latent_dim: int = 384, device: str = "cpu", url: str = "nats://127.0.0.1:4222") -> None:
+    """Convenience helper for ``NatsIntrinsicServer``."""
+
+    server = NatsIntrinsicServer(
+        reward_name,
+        subject=subject,
+        latent_dim=latent_dim,
+        device=device,
+        url=url,
+    )
     server.serve()
 
 

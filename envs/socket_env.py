@@ -22,6 +22,11 @@ from utils.cosine import cosine_distance
 from utils.udp_client import UdpClient
 from utils.world_model_client import WorldModelClient
 from utils.intrinsic_client import IntrinsicClient
+from utils.nats_client import (
+    NatsActionClient,
+    NatsWorldModelClient,
+    NatsIntrinsicClient,
+)
 from dataclasses import asdict
 
 class SocketAppEnv(gym.Env):
@@ -48,6 +53,8 @@ class SocketAppEnv(gym.Env):
         world_model_type="mlp",
         world_model_interval=5,
         use_intrinsic_server=False,
+        use_nats=False,
+        nats_url="nats://127.0.0.1:4222",
         intrinsic_host="127.0.0.1",
         intrinsic_port=5008,
         intrinsic_reward_name="E3BIntrinsicReward",
@@ -85,6 +92,8 @@ class SocketAppEnv(gym.Env):
         self.world_model_type = world_model_type
         self.wm_interval_steps = int(max(1, world_model_interval))
         self.use_intrinsic_server = use_intrinsic_server
+        self.use_nats = use_nats
+        self.nats_url = nats_url
         self.intrinsic_addr = (intrinsic_host, intrinsic_port)
         self.intrinsic_reward_name = intrinsic_reward_name
 
@@ -245,6 +254,8 @@ class SocketAppEnv(gym.Env):
         self.world_model_type = config.world_model.model_type
         self.wm_interval_steps = int(max(1, config.world_model.interval_steps))
         self.use_intrinsic_server = getattr(config, "use_intrinsic_server", False)
+        self.use_nats = getattr(config, "use_nats", False)
+        self.nats_url = getattr(config, "nats_url", "nats://127.0.0.1:4222")
         if hasattr(config, "intrinsic_server"):
             self.intrinsic_addr = (
                 config.intrinsic_server.host,
@@ -261,17 +272,26 @@ class SocketAppEnv(gym.Env):
         world_model_client: Optional[WorldModelClient],
         intrinsic_client: Optional[IntrinsicClient] = None,
     ) -> None:
-        """Initialize UDP clients used by the environment."""
-        self.udp_client = udp_client or UdpClient(
-            self.action_addr, self.reward_addr, self.combined_server
-        )
+        """Initialize UDP or NATS clients used by the environment."""
+        if self.use_nats:
+            self.udp_client = udp_client or NatsActionClient(self.nats_url)
+        else:
+            self.udp_client = udp_client or UdpClient(
+                self.action_addr, self.reward_addr, self.combined_server
+            )
         if self.use_world_model:
-            self.wm_client = world_model_client or WorldModelClient(self.wm_addr)
+            if self.use_nats:
+                self.wm_client = world_model_client or NatsWorldModelClient(self.nats_url)
+            else:
+                self.wm_client = world_model_client or WorldModelClient(self.wm_addr)
         else:
             self.wm_client = None
 
         if self.use_intrinsic_server:
-            self.intrinsic_client = intrinsic_client or IntrinsicClient(self.intrinsic_addr)
+            if self.use_nats:
+                self.intrinsic_client = intrinsic_client or NatsIntrinsicClient(self.nats_url)
+            else:
+                self.intrinsic_client = intrinsic_client or IntrinsicClient(self.intrinsic_addr)
         else:
             self.intrinsic_client = None
 
