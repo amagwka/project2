@@ -41,17 +41,11 @@ class EnvConfig:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     action_dim: int = 7
     state_dim: int = 384
-    action_host: str = "127.0.0.1"
-    action_port: int = 5005
-    reward_host: str = "127.0.0.1"
-    reward_port: int = 5006
     embedding_model: str = "facebook/dinov2-with-registers-small"
-    combined_server: bool = True
     start_servers: bool = True
     enable_logging: bool = True
     use_world_model: bool = True
     use_intrinsic_server: bool = False
-    use_nats: bool = False
     nats_url: str = "nats://127.0.0.1:4222"
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
     intrinsic_server: IntrinsicServerConfig = field(default_factory=IntrinsicServerConfig)

@@ -15,7 +15,7 @@ class NatsClient:
 
     def _connect(self) -> None:
         if not self.connected:
-            self.loop.run_until_complete(self.nc.connect(self.url, loop=self.loop))
+            self.loop.run_until_complete(self.nc.connect(servers=[self.url]))
             self.connected = True
 
     def request(self, subject: str, data: bytes = b"") -> bytes:

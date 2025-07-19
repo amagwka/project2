@@ -20,7 +20,7 @@ class ConstantRewardTracker(RewardTracker):
 
 
 if __name__ == "__main__":
-    from servers.reward_server import start_udp_reward_server
+    from servers.reward_server import start_nats_reward_server
 
     tracker = ConstantRewardTracker(0.5)
-    start_udp_reward_server(tracker)
+    start_nats_reward_server(tracker)

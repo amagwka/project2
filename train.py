@@ -9,7 +9,7 @@ from stable_baselines3 import PPO as SB3PPO
 from stable_baselines3.common.env_util import make_vec_env
 
 from config import Config
-from envs.socket_env import create_socket_env, SocketAppEnv
+from envs.nats_env import create_nats_env, NatsAppEnv
 from servers.manager import ServerManager
 from models.nn import Actor, Q_Critic
 from models.ppo import ppo_update
@@ -32,14 +32,14 @@ def create_server_manager(cfg: Config) -> Optional[ServerManager]:
     return ServerManager() if cfg.env.start_servers else None
 
 
-def create_environment(cfg: Config, manager: Optional[ServerManager]) -> SocketAppEnv:
-    """Instantiate ``SocketAppEnv`` using ``manager``."""
-    return create_socket_env(cfg.env, server_manager=manager)
+def create_environment(cfg: Config, manager: Optional[ServerManager]) -> NatsAppEnv:
+    """Instantiate ``NatsAppEnv`` using ``manager``."""
+    return create_nats_env(cfg.env, server_manager=manager)
 
 
 def create_vec_env(cfg: Config, manager: Optional[ServerManager]):
     """Create a vectorized environment for Stable Baselines."""
-    env_fn = lambda: create_socket_env(cfg.env, server_manager=manager)
+    env_fn = lambda: create_nats_env(cfg.env, server_manager=manager)
     return make_vec_env(env_fn, n_envs=1)
 
 

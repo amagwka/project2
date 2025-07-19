@@ -1,5 +1,5 @@
+import subprocess
 import threading
-import socket
 import numpy as np
 from pathlib import Path
 
@@ -8,37 +8,30 @@ ROOT = Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0, str(ROOT))
 
-from servers.intrinsic_server import IntrinsicServer
-from tests.utils import get_free_udp_port
+from servers.intrinsic_server import NatsIntrinsicServer
+from utils.nats_client import NatsIntrinsicClient
+from tests.utils import get_free_port
 
 
 def test_intrinsic_server_compute_and_reset():
-    port = get_free_udp_port()
-    server = IntrinsicServer(
-        'examples.custom_curiosity.ConstantCuriosity',
-        host='127.0.0.1',
-        port=port,
-        latent_dim=4,
-        device='cpu'
-    )
+    port = get_free_port()
+    url = f"nats://127.0.0.1:{port}"
+    proc = subprocess.Popen(["nats-server", "-p", str(port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    server = NatsIntrinsicServer('examples.custom_curiosity.ConstantCuriosity', subject='intrinsic', latent_dim=4, device='cpu', url=url)
     t = threading.Thread(target=server.serve, daemon=True)
     t.start()
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(0.5)
-    addr = ('127.0.0.1', port)
+    client = NatsIntrinsicClient(url)
     try:
         arr = np.zeros(4, dtype=np.float32)
-        sock.sendto(arr.tobytes(), addr)
-        data, _ = sock.recvfrom(64)
-        val = float(data.decode())
+        val = client.compute(arr)
         assert val == 1.0
-        sock.sendto(b'RESET', addr)
-        data, _ = sock.recvfrom(64)
-        assert data == b'OK'
+        client.send_reset()
     finally:
+        client.close()
         server.shutdown()
         t.join(timeout=1)
-        sock.close()
+        proc.terminate()
+        proc.wait(timeout=5)
 
 

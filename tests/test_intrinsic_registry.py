@@ -8,10 +8,10 @@ import numpy as np
 import pytest
 
 try:
-    from envs.socket_env import SocketAppEnv
+    from envs.nats_env import NatsAppEnv
     from utils.intrinsic import BaseIntrinsicReward
 except ModuleNotFoundError:
-    SocketAppEnv = None
+    NatsAppEnv = None
     class BaseIntrinsicReward:
         def reset(self):
             pass
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
 from utils.intrinsic_registry import register_reward, get_reward, CompositeIntrinsicReward
 
 
-class DummyUdpClient:
+class DummyNatsClient:
     def __init__(self, reward: float = 1.0):
         self.reward = reward
         self.actions = []
@@ -62,7 +62,7 @@ def test_register_and_get_reward():
 
 
 def test_env_builds_reward_from_registry():
-    if SocketAppEnv is None:
+    if NatsAppEnv is None:
         pytest.skip("gymnasium not installed")
 
     class RegReward(BaseIntrinsicReward):
@@ -73,17 +73,16 @@ def test_env_builds_reward_from_registry():
 
     register_reward("RegReward", RegReward)
 
-    udp = DummyUdpClient(reward=1.0)
+    udp = DummyNatsClient(reward=1.0)
     obs_enc = DummyObsEncoder()
-    env = SocketAppEnv(
+    env = NatsAppEnv(
         max_steps=1,
         device="cpu",
         embedding_model=None,
-        combined_server=False,
         enable_logging=False,
         start_servers=False,
         use_world_model=False,
-        udp_client=udp,
+        action_client=udp,
         obs_encoder=obs_enc,
         server_manager=None,
         config=None,
@@ -97,22 +96,21 @@ def test_env_builds_reward_from_registry():
 
 
 def test_invalid_intrinsic_name_errors():
-    if SocketAppEnv is None:
+    if NatsAppEnv is None:
         pytest.skip("gymnasium not installed")
 
-    udp = DummyUdpClient(reward=1.0)
+    udp = DummyNatsClient(reward=1.0)
     obs_enc = DummyObsEncoder()
 
     with pytest.raises(ValueError):
-        SocketAppEnv(
+        NatsAppEnv(
             max_steps=1,
             device="cpu",
             embedding_model=None,
-            combined_server=False,
             enable_logging=False,
             start_servers=False,
             use_world_model=False,
-            udp_client=udp,
+            action_client=udp,
             obs_encoder=obs_enc,
             server_manager=None,
             intrinsic_names=["does.not.Exist"],

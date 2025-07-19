@@ -7,13 +7,13 @@ are missing.
 """
 
 try:
-    from .socket_env import SocketAppEnv  # type: ignore
+    from .nats_env import NatsAppEnv  # type: ignore
 except Exception:  # pragma: no cover - optional dependency may be missing
-    SocketAppEnv = None  # type: ignore
+    NatsAppEnv = None  # type: ignore
 
 from .bandit_env import MultiArmedBanditEnv
 
 __all__ = [
-    "SocketAppEnv",
+    "NatsAppEnv",
     "MultiArmedBanditEnv",
 ]
