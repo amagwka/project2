@@ -72,22 +72,19 @@ bonus.
 ## Action and Reward Server
 
 Action and reward helpers use the `NatsServer` base class defined in
-`servers/nats_base.py`. The convenience function `start_nats_combined_server`
-from `servers/action_server.py` listens on the `actions` subject and dispatches
-incoming messages to either the keyboard handler or the reward tracker.
-`servers/reward_server.py` exposes `start_nats_reward_server` for reward queries
-only. Each handler understands the `GET` and `RESET` commands and replies with
-the computed reward or ``OK`` respectively. Run ``python -m servers.action_server``
-to launch the combined server.
+`servers/nats_base.py`. Individual modules are exposed over dedicated subjects:
 
-`servers/intrinsic_server.py` exposes `start_nats_intrinsic_server` which hosts a
-single curiosity module over NATS. Pass `--name` with any registered reward
-class to run it as a standalone process.
+* `servers/e3m_reward_server.py` publishes intrinsic rewards on
+  ``rewards.e3m``.
+* `servers/world_model_reward_server.py` returns world model errors on
+  ``rewards.world_model``.
+* `servers/external_reward_server.py` provides in‑game rewards via
+  ``rewards.in_game``.
+* `servers/action_executor_server.py` listens on ``actions.*`` queues to
+  execute keyboard actions.
 
-`servers/action_server.py` accepts any `RewardTracker` implementation. The
-default tracker is `ExternalRewardTracker` from `servers/reward_server.py`.
-Custom plugins can subclass `RewardTracker`—see `examples/constant_tracker.py`
-for a trivial tracker.
+All servers understand the ``RESET`` command where applicable. They can be
+launched individually or orchestrated through ``servers/orchestrator.py``.
 
 
 ## Neural Modules and PPO
@@ -106,15 +103,15 @@ The script creates a virtual environment in `.venv` and installs the
 packages pinned in `requirements.txt`.
 
 ## Running
-1. Start the NATS server and the combined action/reward server:
+1. Start the NATS server and whichever modules you need. For example the action
+   executor and in‑game reward server:
    ```bash
    nats-server &
-   python servers/action_server.py
+   python -m servers.action_executor_server
+   python -m servers.external_reward_server
    ```
-2. (Optional) start the world model server which provides predictions for
-   the additional reward. The server loads the pretrained checkpoint at
-   `lab/scripts/rnn_lstm.pt` which was trained with an LSTM of hidden size
-   512 and 3 layers:
+2. (Optional) start the world model reward server which loads the pretrained
+   checkpoint at `lab/scripts/rnn_lstm.pt`:
 
    Note that observations produced by `LocalObs` are scaled down by a
    factor of ten. The environment scales them back up before sending them to
@@ -122,12 +119,11 @@ packages pinned in `requirements.txt`.
    before replying.
 
  ```bash
-  python servers/world_model_server.py
+  python -m servers.world_model_reward_server --model-path lab/scripts/rnn_lstm.pt
   ```
-3. (Optional) start the intrinsic reward server to offload curiosity
-   computation:
+3. (Optional) launch the E3M intrinsic reward module:
    ```bash
-   python -m servers.intrinsic_server --name E3BIntrinsicReward
+   python -m servers.e3m_reward_server
    ```
 4. Launch the training script:
    ```bash

@@ -35,27 +35,38 @@ class NatsClient:
 class NatsActionClient(NatsClient):
     """Client for actions and rewards over NATS."""
 
+    def __init__(self, url: str = "nats://127.0.0.1:4222", queue: int = 1, timeout: float = 0.5):
+        super().__init__(url, timeout)
+        self.queue = max(1, min(queue, 5))
+
+    @property
+    def _subject(self) -> str:
+        return f"actions.{self.queue}"
+
     def send_action(self, action_idx: int) -> None:
-        self.request("actions", str(action_idx).encode())
+        self.request(self._subject, f"{action_idx} 10".encode())
 
     def get_reward(self) -> float:
-        data = self.request("actions", b"GET")
+        data = self.request("rewards.in_game", b"GET")
         try:
             return float(data.decode())
         except Exception:
             return 0.0
 
     def send_reset(self) -> None:
-        self.request("actions", b"RESET")
+        self.request("rewards.in_game", b"RESET")
 
 
 class NatsWorldModelClient(NatsClient):
-    """Client for world model predictions over NATS."""
+    """Client for world model based rewards over NATS."""
 
-    def predict(self, obs_sequence):
-        data = obs_sequence.astype("float32").tobytes()
-        reply = self.request("world_model", data)
-        return np.frombuffer(reply, dtype=np.float32)
+    def compute(self, obs_sequence, next_obs):
+        arr = np.concatenate([obs_sequence.flatten(), next_obs]).astype("float32")
+        reply = self.request("rewards.world_model", arr.tobytes())
+        try:
+            return float(reply.decode())
+        except Exception:
+            return 0.0
 
 
 class NatsIntrinsicClient(NatsClient):
@@ -65,11 +76,11 @@ class NatsIntrinsicClient(NatsClient):
         arr = obs.astype("float32")
         if action is not None:
             arr = np.concatenate((np.array([action], dtype=np.float32), arr))
-        data = self.request("intrinsic", arr.tobytes())
+        data = self.request("rewards.e3m", arr.tobytes())
         try:
             return float(data.decode())
         except Exception:
             return 0.0
 
     def send_reset(self) -> None:
-        self.request("intrinsic", b"RESET")
+        self.request("rewards.e3m", b"RESET")

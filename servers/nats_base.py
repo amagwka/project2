@@ -44,3 +44,20 @@ class NatsServer:
 
     def shutdown(self) -> None:
         self.loop.call_soon_threadsafe(self._shutdown.set)
+
+
+class PatternNatsServer(NatsServer):
+    """NATS server that exposes a wildcard subject pattern."""
+
+    def __init__(self, subject_pattern: str, url: str = "nats://127.0.0.1:4222"):
+        super().__init__(subject_pattern, url)
+
+    async def _cb(self, msg):
+        reply = await self.handle(msg.subject, msg.data)
+        if isinstance(reply, str):
+            reply = reply.encode()
+        if reply is not None and msg.reply:
+            await self.nc.publish(msg.reply, reply)
+
+    async def handle(self, subject: str, data: bytes) -> Optional[bytes]:
+        raise NotImplementedError
