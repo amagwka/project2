@@ -51,6 +51,8 @@ class EnvConfig:
     enable_logging: bool = True
     use_world_model: bool = True
     use_intrinsic_server: bool = False
+    use_nats: bool = False
+    nats_url: str = "nats://127.0.0.1:4222"
     world_model: WorldModelConfig = field(default_factory=WorldModelConfig)
     intrinsic_server: IntrinsicServerConfig = field(default_factory=IntrinsicServerConfig)
     intrinsic_names: list[str] = field(default_factory=lambda: ["E3BIntrinsicReward"])

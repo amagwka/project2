@@ -4,6 +4,7 @@ from models.world_model import LSTMWorldModel
 from lab.rnn_baseline import RNNPredictor
 from lab.mlp_world_model import MLPWorldModel
 from servers.base import UdpServer
+from servers.nats_base import NatsServer
 
 MODEL_TYPES = {
     "lstm": LSTMWorldModel,
@@ -78,6 +79,17 @@ class WorldModelServer(UdpServer):
         return pred.tobytes()
 
 
+class NatsWorldModelServer(NatsServer):
+    """NATS server serving predictions from a trained world model."""
+
+    def __init__(self, *args, subject: str = "world_model", url: str = "nats://127.0.0.1:4222", **kwargs):
+        super().__init__(subject, url)
+        self._udp = WorldModelServer(*args, **kwargs)
+
+    async def handle(self, data: bytes) -> bytes | None:
+        return self._udp.handle(data, None)
+
+
 def start_udp_world_model_server(
     model_path: str = DEFAULT_MODEL_PATH,
     host: str = "0.0.0.0",
@@ -97,6 +109,31 @@ def start_udp_world_model_server(
         seq_len=seq_len,
         device=device,
         model_type=model_type,
+    )
+    server.serve()
+
+
+def start_nats_world_model_server(
+    model_path: str = DEFAULT_MODEL_PATH,
+    subject: str = "world_model",
+    obs_dim: int = 384,
+    seq_len: int = 30,
+    device: str = "cuda",
+    model_type: str = "lstm",
+    url: str = "nats://127.0.0.1:4222",
+):
+    """Helper launching ``NatsWorldModelServer``."""
+
+    server = NatsWorldModelServer(
+        model_path,
+        host="0.0.0.0",
+        port=0,
+        obs_dim=obs_dim,
+        seq_len=seq_len,
+        device=device,
+        model_type=model_type,
+        subject=subject,
+        url=url,
     )
     server.serve()
 
