@@ -87,7 +87,7 @@ def run_sb3_training(cfg: Config, timesteps: int = 5000, manager: Optional[Serve
 
 def train_loop(
     cfg: Config,
-    env: SocketAppEnv,
+    env: NatsAppEnv,
     actor: Actor,
     critic: Q_Critic,
     optim_actor: optim.Optimizer,
