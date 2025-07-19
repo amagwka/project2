@@ -7,7 +7,7 @@ from stable_baselines3.common.env_util import make_vec_env
 
 from envs.bandit_env import MultiArmedBanditEnv
 from envs.continuous_bandit_env import ContinuousBanditEnv
-from envs.socket_env import create_socket_env
+from envs.nats_env import create_nats_env
 from servers.manager import ServerManager
 from config import get_config
 
@@ -22,12 +22,12 @@ def make_env(name: str) -> Callable[[], gym.Env]:
         def _f() -> gym.Env:
             return ContinuousBanditEnv(optimal_action=0.2)
         return _f
-    if name == "socket":
+    if name == "nats":
         cfg = get_config()
         manager = ServerManager() if cfg.env.start_servers else None
 
         def _f() -> gym.Env:
-            return create_socket_env(cfg.env, server_manager=manager)
+            return create_nats_env(cfg.env, server_manager=manager)
 
         _f.manager = manager
         return _f
@@ -37,7 +37,7 @@ def make_env(name: str) -> Callable[[], gym.Env]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stable Baselines3 PPO trainer")
     parser.add_argument(
-        "--env", choices=["bandit", "continuous", "socket"], default="continuous",
+        "--env", choices=["bandit", "continuous", "nats"], default="continuous",
         help="Environment to train on")
     parser.add_argument(
         "--timesteps", type=int, default=5000,

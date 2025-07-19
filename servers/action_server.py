@@ -16,7 +16,6 @@ from servers.constants import (
     ARROW_IDX,
     WAIT_IDX,
 )
-from servers.base import UdpServer
 from servers.nats_base import NatsServer
 
 # Keyboard setup
@@ -46,29 +45,6 @@ def send_action(action_idx):
         print(f"[Error] Invalid action index: {action_idx}")
 
 
-class ActionRewardServer(UdpServer):
-    """UDP server handling both actions and reward queries."""
-
-    def __init__(self, tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5005):
-        super().__init__(host, port, buffer_size=1024)
-        self.tracker = tracker
-
-    # --------------------------------------------------------------
-    def handle(self, data: bytes, addr):
-        m = data.decode().strip().upper()
-        if m == "GET":
-            r = self.tracker.compute_reward()
-            return f"{r:.6f}"
-        if m == "RESET":
-            self.tracker.reset()
-            return b"OK"
-        try:
-            action_idx = int(m)
-            send_action(action_idx)
-            return b"DONE"
-        except ValueError:
-            return b"ERR"
-
 
 class NatsActionRewardServer(NatsServer):
     """NATS server handling actions and reward queries."""
@@ -93,13 +69,6 @@ class NatsActionRewardServer(NatsServer):
             return b"ERR"
 
 
-def start_combined_udp_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5005):
-    """Convenience helper starting ``ActionRewardServer``."""
-
-    server = ActionRewardServer(tracker, host=host, port=port)
-    server.serve(cleanup=tracker.close)
-
-
 def start_nats_combined_server(tracker: RewardTracker, subject: str = "actions", url: str = "nats://127.0.0.1:4222") -> None:
     """Convenience helper starting ``NatsActionRewardServer``."""
 
@@ -109,4 +78,4 @@ def start_nats_combined_server(tracker: RewardTracker, subject: str = "actions",
 
 if __name__ == "__main__":
     tracker = ExternalRewardTracker()
-    start_combined_udp_server(tracker)
+    start_nats_combined_server(tracker)

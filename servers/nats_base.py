@@ -26,7 +26,7 @@ class NatsServer:
             await self.nc.publish(msg.reply, reply)
 
     async def _serve(self, cleanup: Optional[Callable[[], None]] = None):
-        await self.nc.connect(self.url, loop=self.loop)
+        await self.nc.connect(servers=[self.url])
         await self.nc.subscribe(self.subject, cb=self._cb)
         await self._shutdown.wait()
         await self.nc.drain()

@@ -5,7 +5,6 @@ import psutil
 from pymem import Pymem
 from pymem.exception import MemoryReadError
 
-from servers.base import UdpServer
 from servers.nats_base import NatsServer
 
 from servers.tracker import RewardTracker
@@ -96,22 +95,6 @@ class ExternalRewardTracker(RewardTracker):
         self.pm.close_process()
 
 
-class RewardServer(UdpServer):
-    """UDP server exposing the reward tracker."""
-
-    def __init__(self, tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5006):
-        super().__init__(host, port, buffer_size=64)
-        self.tracker = tracker
-
-    def handle(self, data: bytes, addr):
-        cmd = data.decode().strip().upper()
-        if cmd == "GET":
-            r = self.tracker.compute_reward()
-            return f"{r:.6f}"
-        if cmd == "RESET":
-            self.tracker.reset()
-            return b"OK"
-        return b"ERR"
 
 
 class NatsRewardServer(NatsServer):
@@ -130,13 +113,6 @@ class NatsRewardServer(NatsServer):
             self.tracker.reset()
             return b"OK"
         return b"ERR"
-
-
-def start_udp_reward_server(tracker: RewardTracker, host: str = "0.0.0.0", port: int = 5006):
-    """Convenience helper for ``RewardServer``."""
-
-    server = RewardServer(tracker, host=host, port=port)
-    server.serve(cleanup=tracker.close)
 
 
 def start_nats_reward_server(tracker: RewardTracker, subject: str = "rewards", url: str = "nats://127.0.0.1:4222") -> None:

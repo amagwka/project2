@@ -9,11 +9,11 @@ sys.path.insert(0, str(ROOT))
 import pytest
 
 try:
-    from envs.socket_env import SocketAppEnv
+    from envs.nats_env import NatsAppEnv
     from servers.manager import ServerManager
     from utils.intrinsic import BaseIntrinsicReward
 except ModuleNotFoundError:
-    SocketAppEnv = None
+    NatsAppEnv = None
     ServerManager = None
     class BaseIntrinsicReward:
         def reset(self):
@@ -23,7 +23,7 @@ except ModuleNotFoundError:
 
 
 
-class DummyUdpClient:
+class DummyNatsClient:
     def __init__(self, reward: float = 1.0):
         self.reward = reward
         self.actions = []
@@ -63,20 +63,19 @@ class DummyIntrinsic(BaseIntrinsicReward):
         return 42.0
 
 
-def test_socket_env_basic():
-    if SocketAppEnv is None:
+def test_nats_env_basic():
+    if NatsAppEnv is None:
         pytest.skip("gymnasium not installed")
-    udp = DummyUdpClient(reward=1.0)
+    udp = DummyNatsClient(reward=1.0)
     obs_enc = DummyObsEncoder()
-    env = SocketAppEnv(
+    env = NatsAppEnv(
         max_steps=1,
         device="cpu",
         embedding_model=None,
-        combined_server=False,
         enable_logging=False,
         start_servers=False,
         use_world_model=False,
-        udp_client=udp,
+        action_client=udp,
         obs_encoder=obs_enc,
         server_manager=None,
     )
@@ -93,21 +92,20 @@ def test_socket_env_basic():
     env.close()
 
 
-def test_socket_env_custom_intrinsic():
-    if SocketAppEnv is None:
+def test_nats_env_custom_intrinsic():
+    if NatsAppEnv is None:
         pytest.skip("gymnasium not installed")
-    udp = DummyUdpClient(reward=1.0)
+    udp = DummyNatsClient(reward=1.0)
     obs_enc = DummyObsEncoder()
     intrinsic = DummyIntrinsic()
-    env = SocketAppEnv(
+    env = NatsAppEnv(
         max_steps=1,
         device="cpu",
         embedding_model=None,
-        combined_server=False,
         enable_logging=False,
         start_servers=False,
         use_world_model=False,
-        udp_client=udp,
+        action_client=udp,
         obs_encoder=obs_enc,
         server_manager=None,
         intrinsic_reward=intrinsic,
@@ -119,23 +117,22 @@ def test_socket_env_custom_intrinsic():
     env.close()
 
 
-def test_socket_env_config_intrinsic():
-    if SocketAppEnv is None:
+def test_nats_env_config_intrinsic():
+    if NatsAppEnv is None:
         pytest.skip("gymnasium not installed")
-    udp = DummyUdpClient(reward=1.0)
+    udp = DummyNatsClient(reward=1.0)
     obs_enc = DummyObsEncoder()
     from config import get_config
     cfg = get_config()
     cfg.env.intrinsic_names = ["examples.custom_curiosity.ConstantCuriosity"]
-    env = SocketAppEnv(
+    env = NatsAppEnv(
         max_steps=1,
         device="cpu",
         embedding_model=None,
-        combined_server=False,
         enable_logging=False,
         start_servers=False,
         use_world_model=False,
-        udp_client=udp,
+        action_client=udp,
         obs_encoder=obs_enc,
         server_manager=None,
         config=cfg.env,
@@ -147,7 +144,7 @@ def test_socket_env_config_intrinsic():
 
 
 def test_no_server_spawn_when_disabled(monkeypatch):
-    if SocketAppEnv is None:
+    if NatsAppEnv is None:
         pytest.skip("gymnasium not installed")
 
     popen_calls = []
@@ -163,18 +160,17 @@ def test_no_server_spawn_when_disabled(monkeypatch):
 
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
 
-    udp = DummyUdpClient()
+    udp = DummyNatsClient()
     obs_enc = DummyObsEncoder()
     mgr = ServerManager()
-    env = SocketAppEnv(
+    env = NatsAppEnv(
         max_steps=1,
         device="cpu",
         embedding_model=None,
-        combined_server=False,
         enable_logging=False,
         start_servers=False,
         use_world_model=False,
-        udp_client=udp,
+        action_client=udp,
         obs_encoder=obs_enc,
         server_manager=mgr,
     )
